@@ -9,7 +9,7 @@ on:
         default: all
       target:
         type: choice
-        options: [all, macos-15]
+        options: [all, macos-15, macos-26]
         default: all
       release:
         type: boolean
@@ -35,7 +35,8 @@ jobs:
             jq -cn --arg php "$PHP_MINOR" --arg target "$TARGET" '{
               include: (
                 ["8.1", "8.2", "8.3", "8.4", "8.5", "8.6"] as $minors
-                | [{"os": "macos-15", "arch": "arm64"}] as $targets
+                | [{"os": "macos-15", "arch": "arm64"},
+                   {"os": "macos-26", "arch": "arm64"}] as $targets
                 | [ $minors[] as $m | $targets[] as $t
                     | select($php == "all" or $php == $m)
                     | select($target == "all" or $target == $t.os)
