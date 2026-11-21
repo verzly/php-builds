@@ -70,6 +70,10 @@ pub(crate) fn verify(package: &Path, minor: &str) -> Result<()> {
     if !version.starts_with(&format!("{minor}.")) {
         return Err(format!("Unexpected PHP version: {version}").into());
     }
+    if minor == "8.6" {
+        eprintln!("Skipping the PIE check: no published extension supports PHP {minor} yet");
+        return Ok(());
+    }
     let pie = work.join("pie.phar");
     download(PIE_URL, &pie)?;
     if sha256(&pie)? != PIE_SHA256 {
