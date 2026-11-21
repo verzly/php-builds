@@ -94,6 +94,8 @@ pub(crate) fn build(minor: &str, root: &Path) -> Result<PathBuf> {
     if cfg!(target_os = "macos") {
         let bzip2 = capture(Command::new("brew").args(["--prefix", "bzip2"]))?;
         options.push(format!("--with-bz2={bzip2}"));
+        let iconv = capture(Command::new("brew").args(["--prefix", "libiconv"]))?;
+        options.push(format!("--with-iconv={iconv}"));
         options.push("--with-zip".into());
     } else if pkg_config_exists("libzip") {
         options.push("--with-zip".into());
@@ -110,6 +112,7 @@ pub(crate) fn build(minor: &str, root: &Path) -> Result<PathBuf> {
             "curl",
             "sqlite3",
             "zlib",
+            "oniguruma",
             "readline",
             "libzip",
             "bzip2",
