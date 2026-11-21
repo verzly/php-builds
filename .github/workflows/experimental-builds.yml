@@ -247,7 +247,7 @@ jobs:
       - uses: jdx/mr-boxington-action@v1
       - name: Build Rust CLI
         run: mbx build --release --locked
-      - name: Test published archive
+      - name: Download and extract published archive
         env:
           GH_TOKEN: ${{ github.token }}
           PHP_MINOR: ${{ matrix.php_minor }}
@@ -257,7 +257,14 @@ jobs:
           mkdir -p "$RUNNER_TEMP/rel" "$RUNNER_TEMP/sdk"
           gh release download "php-$VERSION" --pattern "php-$VERSION-${{ matrix.os }}-${{ matrix.arch }}.tar.gz" --dir "$RUNNER_TEMP/rel"
           tar -xzf "$RUNNER_TEMP/rel/php-$VERSION-${{ matrix.os }}-${{ matrix.arch }}.tar.gz" -C "$RUNNER_TEMP/sdk"
-          target/release/php-builds verify --package "$RUNNER_TEMP/sdk" --minor "$PHP_MINOR"
+      - name: Run runtime self-check
+        env:
+          PHP_MINOR: ${{ matrix.php_minor }}
+        run: target/release/php-builds selfcheck --package "$RUNNER_TEMP/sdk" --minor "$PHP_MINOR"
+      - name: Verify relocated package
+        env:
+          PHP_MINOR: ${{ matrix.php_minor }}
+        run: target/release/php-builds verify --package "$RUNNER_TEMP/sdk" --minor "$PHP_MINOR"
 
       - name: Stop the whole run on failure
         if: failure()
@@ -312,7 +319,7 @@ jobs:
         run: sh ci/install-dependencies.sh
       - name: Install Rust toolchain
         run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
-      - name: Test published archive
+      - name: Download and extract published archive
         env:
           GH_TOKEN: ${{ github.token }}
           PHP_MINOR: ${{ matrix.php_minor }}
@@ -323,7 +330,14 @@ jobs:
           mkdir -p "$RUNNER_TEMP/rel" "$RUNNER_TEMP/sdk"
           gh release download "php-$VERSION" --pattern "php-$VERSION-${{ matrix.distro }}-${{ matrix.arch }}.tar.gz" --dir "$RUNNER_TEMP/rel"
           tar -xzf "$RUNNER_TEMP/rel/php-$VERSION-${{ matrix.distro }}-${{ matrix.arch }}.tar.gz" -C "$RUNNER_TEMP/sdk"
-          target/release/php-builds verify --package "$RUNNER_TEMP/sdk" --minor "$PHP_MINOR"
+      - name: Run runtime self-check
+        env:
+          PHP_MINOR: ${{ matrix.php_minor }}
+        run: target/release/php-builds selfcheck --package "$RUNNER_TEMP/sdk" --minor "$PHP_MINOR"
+      - name: Verify relocated package
+        env:
+          PHP_MINOR: ${{ matrix.php_minor }}
+        run: target/release/php-builds verify --package "$RUNNER_TEMP/sdk" --minor "$PHP_MINOR"
 
       - name: Stop the whole run on failure
         if: failure()

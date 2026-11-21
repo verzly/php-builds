@@ -10,10 +10,12 @@ use std::{
 mod build;
 mod relocate;
 mod resolve;
+mod selfcheck;
 mod verify;
 
 use build::build;
 use resolve::resolve;
+use selfcheck::selfcheck;
 use verify::verify;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
@@ -50,6 +52,13 @@ enum Commands {
         #[arg(long)]
         minor: String,
     },
+    #[command(name = "selfcheck")]
+    SelfCheck {
+        #[arg(long)]
+        package: PathBuf,
+        #[arg(long)]
+        minor: String,
+    },
 }
 
 fn main() -> Result<()> {
@@ -73,6 +82,7 @@ fn main() -> Result<()> {
         }
         Commands::Build { minor, root } => println!("{}", build(&minor, &root)?.display()),
         Commands::Verify { package, minor } => verify(&package, &minor)?,
+        Commands::SelfCheck { package, minor } => selfcheck(&package, &minor)?,
     }
     Ok(())
 }
