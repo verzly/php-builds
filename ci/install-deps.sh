@@ -26,7 +26,8 @@ enable_epel() {
     # EL8 links with binutils 2.30, which rejects the mbstring IFUNC symbols in a
     # non-PIE executable. Export position-independent flags for the PHP build.
     if [ "$major" = 8 ] && [ -n "${GITHUB_ENV:-}" ]; then
-        echo "CFLAGS=-fPIE" >> "$GITHUB_ENV"
+        echo "CFLAGS=-fPIC" >> "$GITHUB_ENV"
+        echo "CXXFLAGS=-fPIC" >> "$GITHUB_ENV"
         echo "LDFLAGS=-pie" >> "$GITHUB_ENV"
     fi
 }
