@@ -95,7 +95,7 @@ jobs:
               libpng-dev libjpeg-dev libwebp-dev libicu-dev
           else
             brew install autoconf pkg-config openssl@3 libxml2 curl \
-              sqlite3 zlib oniguruma readline libzip bzip2 libpng jpeg-turbo \
+              sqlite3 zlib readline libzip bzip2 libpng jpeg-turbo \
               webp icu4c
           fi
       - uses: jdx/mr-boxington-action@v1
@@ -134,6 +134,9 @@ jobs:
     runs-on: ubuntu-latest
     container: ${{ matrix.image }}
     timeout-minutes: 120
+    defaults:
+      run:
+        shell: sh
     steps:
       - name: Bootstrap git and curl
         run: |

@@ -32,6 +32,14 @@ fn extract_xz(archive: &Path, destination: &Path) -> Result<()> {
     Ok(())
 }
 
+fn pkg_config_exists(name: &str) -> bool {
+    Command::new("pkg-config")
+        .args(["--exists", name])
+        .status()
+        .map(|status| status.success())
+        .unwrap_or(false)
+}
+
 fn configure_options(prefix: &Path) -> Vec<String> {
     vec![
         format!("--prefix={}", prefix.display()),
@@ -47,14 +55,11 @@ fn configure_options(prefix: &Path) -> Vec<String> {
         "--with-openssl".into(),
         "--with-curl".into(),
         "--with-zlib".into(),
-        "--with-zip".into(),
-        "--with-bz2".into(),
         "--with-readline".into(),
         "--with-pdo-sqlite".into(),
         "--with-sqlite3".into(),
         "--enable-mbstring".into(),
         "--enable-intl".into(),
-        "--enable-opcache".into(),
     ]
 }
 
@@ -83,7 +88,16 @@ pub(crate) fn build(minor: &str, root: &Path) -> Result<PathBuf> {
 
     let prefix = root.join("install");
     fs::create_dir_all(&prefix)?;
-    let options = configure_options(&prefix);
+    let mut options = configure_options(&prefix);
+    // bzip2 and libzip are not visible to configure through the default search
+    // path on every platform, and libzip is absent from some base repositories.
+    if cfg!(target_os = "macos") {
+        let bzip2 = capture(Command::new("brew").args(["--prefix", "bzip2"]))?;
+        options.push(format!("--with-bz2={bzip2}"));
+        options.push("--with-zip".into());
+    } else if pkg_config_exists("libzip") {
+        options.push("--with-zip".into());
+    }
     let mut configure = Command::new("./configure");
     configure.args(&options).current_dir(&source_tree);
     if cfg!(target_os = "macos") {
@@ -96,7 +110,6 @@ pub(crate) fn build(minor: &str, root: &Path) -> Result<PathBuf> {
             "curl",
             "sqlite3",
             "zlib",
-            "oniguruma",
             "readline",
             "libzip",
             "bzip2",
