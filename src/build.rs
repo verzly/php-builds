@@ -96,6 +96,8 @@ pub(crate) fn build(minor: &str, root: &Path) -> Result<PathBuf> {
         options.push(format!("--with-bz2={bzip2}"));
         let iconv = capture(Command::new("brew").args(["--prefix", "libiconv"]))?;
         options.push(format!("--with-iconv={iconv}"));
+        let readline = capture(Command::new("brew").args(["--prefix", "readline"]))?;
+        options.push(format!("--with-readline={readline}"));
         options.push("--with-zip".into());
     } else if pkg_config_exists("libzip") {
         options.push("--with-zip".into());
