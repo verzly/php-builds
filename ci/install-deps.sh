@@ -23,6 +23,12 @@ enable_epel() {
     optional dnf install -y epel-release
     optional dnf install -y "https://dl.fedoraproject.org/pub/epel/epel-release-latest-${major}.noarch.rpm"
     optional dnf makecache
+    # EL8 links with binutils 2.30, which rejects the mbstring IFUNC symbols in a
+    # non-PIE executable. Export position-independent flags for the PHP build.
+    if [ "$major" = 8 ] && [ -n "${GITHUB_ENV:-}" ]; then
+        echo "CFLAGS=-fPIE" >> "$GITHUB_ENV"
+        echo "LDFLAGS=-pie" >> "$GITHUB_ENV"
+    fi
 }
 
 # curl is deliberately absent from the lists below: the RHEL family images ship
@@ -39,7 +45,7 @@ elif command -v dnf >/dev/null 2>&1; then
     dnf install -y gcc gcc-c++ make autoconf pkgconf-pkg-config git \
         openssl-devel libxml2-devel libcurl-devel sqlite-devel \
         zlib-devel oniguruma-devel readline-devel bzip2-devel libpng-devel \
-        libjpeg-turbo-devel libwebp-devel libicu-devel
+        libjpeg-turbo-devel libwebp-devel libicu-devel findutils diffutils
     optional dnf install -y libzip-devel
 elif command -v microdnf >/dev/null 2>&1; then
     enable_epel
@@ -47,14 +53,14 @@ elif command -v microdnf >/dev/null 2>&1; then
     microdnf install -y gcc gcc-c++ make autoconf pkgconf-pkg-config git \
         openssl-devel libxml2-devel libcurl-devel sqlite-devel \
         zlib-devel oniguruma-devel readline-devel bzip2-devel libpng-devel \
-        libjpeg-turbo-devel libwebp-devel libicu-devel
+        libjpeg-turbo-devel libwebp-devel libicu-devel findutils diffutils
     optional microdnf install -y libzip-devel
 elif command -v yum >/dev/null 2>&1; then
     enable_epel
     yum install -y gcc gcc-c++ make autoconf pkgconfig git \
         openssl-devel libxml2-devel libcurl-devel sqlite-devel \
         zlib-devel oniguruma-devel readline-devel bzip2-devel libpng-devel \
-        libjpeg-turbo-devel libwebp-devel libicu-devel
+        libjpeg-turbo-devel libwebp-devel libicu-devel findutils diffutils
     optional yum install -y libzip-devel
 elif command -v apk >/dev/null 2>&1; then
     apk add --no-cache build-base make autoconf pkgconf git curl \

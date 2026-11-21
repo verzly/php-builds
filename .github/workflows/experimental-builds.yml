@@ -134,6 +134,9 @@ jobs:
     runs-on: ubuntu-latest
     container: ${{ matrix.image }}
     timeout-minutes: 120
+    env:
+      # rustup refuses to run when HOME is /github/home but euid 0 resolves /root.
+      HOME: /root
     defaults:
       run:
         shell: sh
