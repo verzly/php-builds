@@ -24,7 +24,7 @@ PIE uses these files to compile an extension without rebuilding PHP itself.
 | Amazon Linux 2023 | x86_64 |
 | Arch Linux | x86_64 |
 | Alpine latest | x86_64, musl |
-| macOS 15, macOS latest | arm64 |
+| macOS 15 | arm64 |
 
 Every Linux target is built inside its own distribution image, because the
 archives link that distribution's OpenSSL, libxml2, ICU and readline. An
