@@ -218,6 +218,11 @@ fn run_logged(command: &mut Command, log: &Path) -> Result<()> {
 
 // Debug symbols roughly triple the archive size and are not needed at runtime.
 fn strip_binaries(prefix: &Path) {
+    // Stripping the macOS binary removes the symbols bundles resolve against,
+    // so extensions stop loading. Keep macOS binaries intact.
+    if cfg!(target_os = "macos") {
+        return;
+    }
     let mut targets = vec![prefix.join("bin/php")];
     if let Ok(dirs) = fs::read_dir(prefix.join("lib/php/extensions")) {
         for dir in dirs.flatten() {
