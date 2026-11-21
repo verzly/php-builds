@@ -86,18 +86,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install build dependencies
-        run: |
-          if [ "$RUNNER_OS" = Linux ]; then
-            sudo apt-get update
-            sudo apt-get install -y build-essential autoconf pkg-config \
-              libssl-dev libxml2-dev libcurl4-openssl-dev libsqlite3-dev \
-              zlib1g-dev libonig-dev libreadline-dev libzip-dev libbz2-dev \
-              libpng-dev libjpeg-dev libwebp-dev libicu-dev
-          else
-            brew install autoconf pkg-config openssl@3 libxml2 curl \
-              sqlite3 zlib oniguruma readline libzip bzip2 libiconv libpng jpeg-turbo \
-              webp icu4c
-          fi
+        env:
+          PHP_BUILD_VERSION: ${{ matrix.php_minor }}
+          PHP_CONFIGURE_OPTIONS: "--with-openssl --with-curl --with-zlib --with-zip --with-bz2 --with-readline --with-pdo-sqlite --with-sqlite3 --enable-mbstring --enable-intl"
+        run: sh ci/install-dependencies.sh
       - uses: jdx/mr-boxington-action@v1
       - name: Build Rust CLI
         run: mbx build --release --locked
@@ -137,6 +129,10 @@ jobs:
     env:
       # rustup refuses to run when HOME is /github/home but euid 0 resolves /root.
       HOME: /root
+      # EL8 toolchains link extension objects into a PIE executable by default.
+      CFLAGS: -fPIC
+      CXXFLAGS: -fPIC
+      LDFLAGS: -pie
     defaults:
       run:
         shell: sh
@@ -164,7 +160,10 @@ jobs:
           fi
       - uses: actions/checkout@v4
       - name: Install build dependencies
-        run: sh ci/install-deps.sh
+        env:
+          PHP_BUILD_VERSION: ${{ matrix.php_minor }}
+          PHP_CONFIGURE_OPTIONS: "--with-openssl --with-curl --with-zlib --with-zip --with-bz2 --with-readline --with-pdo-sqlite --with-sqlite3 --enable-mbstring --enable-intl"
+        run: sh ci/install-dependencies.sh
       - uses: dtolnay/rust-toolchain@stable
       - name: Build Rust CLI
         run: cargo build --release --locked
