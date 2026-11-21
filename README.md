@@ -38,8 +38,19 @@ then runs it to build and package PHP, extract the archive at a different prefix
 remove the original installation, and compile and load Redis through PIE using
 the relocated toolchain. The extension check uses a disposable copy, leaving the
 distributed PHP archive free of that verification extension. Successful jobs
-upload experimental workflow artifacts; there is no release publication or
-scheduled rebuilding. The cache covers the Rust binary only, not PHP itself.
+upload the archives as workflow artifacts. Nothing is rebuilt on a schedule. The
+cache covers the Rust binary only, not PHP itself.
+
+A manual run can be narrowed with the `php_minor` and `target` inputs, so one
+line or one platform can be validated before the full matrix is exercised.
+
+## Releases
+
+Releases are opt-in per run: set the `release` input and a single `php_minor`.
+The run then publishes a prerelease tagged `php-<version>`, containing one
+archive per build target plus the generated manifest and checksums. Re-running
+the same version uploads the assets again. Releases stay marked as prereleases
+until a build has been validated on the target platform.
 
 ## Local builds
 

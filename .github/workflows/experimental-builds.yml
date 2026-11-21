@@ -2,6 +2,18 @@ name: Experimental PHP builds
 
 on:
   workflow_dispatch:
+    inputs:
+      php_minor:
+        type: choice
+        options: [all, "8.1", "8.2", "8.3", "8.4", "8.5", "8.6"]
+        default: all
+      target:
+        type: choice
+        options: [all, ubuntu-22.04, macos-15]
+        default: all
+      release:
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -9,6 +21,7 @@ permissions:
 jobs:
   build:
     name: PHP ${{ matrix.php_minor }} / ${{ matrix.os }}
+    if: ${{ (inputs.php_minor == 'all' || inputs.php_minor == matrix.php_minor) && (inputs.target == 'all' || inputs.target == matrix.os) }}
     strategy:
       fail-fast: false
       matrix:
@@ -62,3 +75,53 @@ jobs:
           path: ${{ runner.temp }}/php-build/logs/*
           if-no-files-found: ignore
           retention-days: 14
+
+  release:
+    needs: build
+    if: ${{ inputs.release == true && inputs.php_minor != 'all' && needs.build.result == 'success' }}
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+      - name: Assemble release assets
+        id: assets
+        run: |
+          mkdir release-assets
+          version=""
+          for package in artifacts/php-*; do
+            [ -d "$package" ] || continue
+            manifest="$package/manifest.json"
+            [ -f "$manifest" ] || continue
+            package_version="$(jq -er '.source_version' "$manifest")"
+            if [ -z "$version" ]; then
+              version="$package_version"
+            elif [ "$version" != "$package_version" ]; then
+              echo "::error::Package manifests report different PHP versions: $version and $package_version"
+              exit 1
+            fi
+            artifact="${package##*/}"
+            for asset in "$package"/*; do
+              [ -f "$asset" ] || continue
+              name="$(basename "$asset")"
+              if [ "$name" = manifest.json ] || [ "$name" = SHA256SUMS ]; then
+                cp "$asset" "release-assets/${artifact}-${name}"
+              else
+                cp "$asset" "release-assets/$name"
+              fi
+            done
+          done
+          [ -n "$version" ] || { echo "::error::No package manifests found"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Create or update prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="php-${{ steps.assets.outputs.version }}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" release-assets/* --clobber
+          else
+            gh release create "$tag" release-assets/* --title "PHP ${{ steps.assets.outputs.version }}" --prerelease
+          fi
