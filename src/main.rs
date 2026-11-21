@@ -35,6 +35,8 @@ enum Commands {
         minor: String,
         #[arg(long)]
         json: bool,
+        #[arg(long)]
+        print_version: bool,
     },
     Build {
         #[arg(long)]
@@ -52,9 +54,15 @@ enum Commands {
 
 fn main() -> Result<()> {
     match Cli::parse().command {
-        Commands::Resolve { minor, json } => {
+        Commands::Resolve {
+            minor,
+            json,
+            print_version,
+        } => {
             let source = resolve(&minor)?;
-            if json {
+            if print_version {
+                println!("{}", source.version);
+            } else if json {
                 println!("{}", serde_json::to_string_pretty(&source)?);
             } else {
                 println!(
