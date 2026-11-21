@@ -19,19 +19,37 @@ permissions:
   contents: read
 
 jobs:
+  plan:
+    runs-on: ubuntu-22.04
+    outputs:
+      matrix: ${{ steps.matrix.outputs.value }}
+    steps:
+      - id: matrix
+        env:
+          PHP_MINOR: ${{ inputs.php_minor }}
+          TARGET: ${{ inputs.target }}
+        run: |
+          {
+            echo "value<<MATRIX_EOF"
+            jq -cn --arg php "$PHP_MINOR" --arg target "$TARGET" '{
+              include: (
+                ["8.1", "8.2", "8.3", "8.4", "8.5", "8.6"] as $minors
+                | [{"os": "ubuntu-22.04", "arch": "x86_64"}, {"os": "macos-15", "arch": "arm64"}] as $targets
+                | [ $minors[] as $m | $targets[] as $t
+                    | select($php == "all" or $php == $m)
+                    | select($target == "all" or $target == $t.os)
+                    | {php_minor: $m, os: $t.os, arch: $t.arch} ]
+              )
+            }'
+            echo "MATRIX_EOF"
+          } >> "$GITHUB_OUTPUT"
+
   build:
     name: PHP ${{ matrix.php_minor }} / ${{ matrix.os }}
-    if: ${{ (inputs.php_minor == 'all' || inputs.php_minor == matrix.php_minor) && (inputs.target == 'all' || inputs.target == matrix.os) }}
+    needs: plan
     strategy:
       fail-fast: false
-      matrix:
-        php_minor: ["8.1", "8.2", "8.3", "8.4", "8.5", "8.6"]
-        os: [ubuntu-22.04, macos-15]
-        include:
-          - os: ubuntu-22.04
-            arch: x86_64
-          - os: macos-15
-            arch: arm64
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
