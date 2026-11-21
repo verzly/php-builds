@@ -31,7 +31,7 @@ archives link that distribution's OpenSSL, libxml2, ICU and readline. An
 archive is therefore not portable between distributions. macOS builds link
 Homebrew library locations.
 Linux arm64, macOS Intel, and Windows are outside this first experiment.
-PHP 8.1 is end-of-life; an experimental build does not restore security support.
+Fedora and Arch Linux ship OpenSSL 4.x, which PHP before 8.4.28 cannot compile against, so those two targets build only PHP 8.4.28 and newer. PHP 8.1 is end-of-life; an experimental build does not restore security support.
 Future PHP lines can be added to the matrix separately.
 
 ## Build and verification

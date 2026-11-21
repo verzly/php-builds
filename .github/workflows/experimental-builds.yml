@@ -52,7 +52,7 @@ jobs:
                   {"distro": "ubuntu-24.04", "image": "ubuntu:24.04"},
                   {"distro": "debian-bookworm", "image": "debian:bookworm"},
                   {"distro": "debian-trixie", "image": "debian:trixie"},
-                  {"distro": "fedora", "image": "fedora:latest"},
+                  {"distro": "fedora", "image": "fedora:latest", "openssl4": true},
                   {"distro": "centos-stream-9", "image": "quay.io/centos/centos:stream9"},
                   {"distro": "centos-stream-10", "image": "quay.io/centos/centos:stream10"},
                   {"distro": "rocky-8", "image": "rockylinux:8"},
@@ -65,11 +65,12 @@ jobs:
                   {"distro": "oracle-9", "image": "oraclelinux:9"},
                   {"distro": "oracle-10", "image": "oraclelinux:10"},
                   {"distro": "amazonlinux-2023", "image": "amazonlinux:2023"},
-                  {"distro": "arch", "image": "archlinux:base-devel"},
+                  {"distro": "arch", "image": "archlinux:base-devel", "openssl4": true},
                   {"distro": "alpine", "image": "alpine:latest"}
                 ] as $distros
                 | [ $minors[] as $m | $distros[] as $d
                     | select($php == "all" or $php == $m)
+                    | select((($m == "8.1" or $m == "8.2" or $m == "8.3") and ($d.openssl4 == true)) | not)
                     | {php_minor: $m, distro: $d.distro, image: $d.image, arch: "x86_64"} ]
               )
             }'
