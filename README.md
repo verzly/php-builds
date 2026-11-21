@@ -55,9 +55,18 @@ Node.js for the cache action. Each job then builds and packages PHP, extracts th
 archive at a different prefix, removes the original installation, and compiles
 and loads Redis through PIE using the relocated toolchain. The extension check
 uses a disposable copy, leaving the distributed PHP archive free of that
-verification extension. Successful jobs upload the archives as workflow
-artifacts. Nothing is rebuilt on a schedule. The cache covers the Rust binary
-only, not PHP itself.
+verification extension.
+
+Each build uploads its archive straight into a **draft** release for that PHP
+version instead of a workflow artifact. A second job per target then downloads
+that archive on its own operating system, extracts it under a different prefix,
+and repeats the relocation and PIE checks, so the published file itself is what
+gets tested rather than a build directory. Only when every target passes does a
+final job write the release's single `SHA256SUMS`, attach it, and flip the draft
+to a prerelease. A failed target leaves the release unpublished.
+
+Nothing is rebuilt on a schedule. The cache covers the Rust binary only, not PHP
+itself.
 
 A matrix stops at the first failure so a broken combination does not consume the
 remaining targets.
