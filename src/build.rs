@@ -21,7 +21,6 @@ struct Manifest {
     configure_options: Vec<String>,
     runtime_dependencies: String,
     archive: String,
-    archive_sha256: String,
 }
 
 fn extract_xz(archive: &Path, destination: &Path) -> Result<()> {
@@ -179,8 +178,6 @@ pub(crate) fn build(minor: &str, root: &Path) -> Result<PathBuf> {
         architecture()
     );
     let archive_path = root.join("dist").join(&archive_name);
-    create_targz(&relocated, &archive_path)?;
-    let archive_sha256 = sha256(&archive_path)?;
     let manifest = Manifest {
         php_minor: minor.into(),
         source_version: source.version,
@@ -190,16 +187,13 @@ pub(crate) fn build(minor: &str, root: &Path) -> Result<PathBuf> {
         configure_options: options,
         runtime_dependencies: "System-linked OpenSSL 3, curl, XML, SQLite, zlib, and other build-host libraries; not self-contained.".into(),
         archive: archive_name.clone(),
-        archive_sha256: archive_sha256.clone(),
     };
+    fs::create_dir_all(relocated.join(".verzly"))?;
     fs::write(
-        root.join("dist/manifest.json"),
+        relocated.join(".verzly/manifest.json"),
         serde_json::to_vec_pretty(&manifest)?,
     )?;
-    fs::write(
-        root.join("dist/SHA256SUMS"),
-        format!("{archive_sha256}  {archive_name}\n"),
-    )?;
+    create_targz(&relocated, &archive_path)?;
     let package = root.join("package");
     if package.exists() {
         fs::remove_dir_all(&package)?;

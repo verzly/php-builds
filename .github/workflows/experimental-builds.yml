@@ -214,27 +214,20 @@ jobs:
           version=""
           for package in artifacts/php-*; do
             [ -d "$package" ] || continue
-            manifest="$package/manifest.json"
-            [ -f "$manifest" ] || continue
-            package_version="$(jq -er '.source_version' "$manifest")"
-            if [ -z "$version" ]; then
-              version="$package_version"
-            elif [ "$version" != "$package_version" ]; then
-              echo "::error::Package manifests report different PHP versions: $version and $package_version"
-              exit 1
-            fi
-            artifact="${package##*/}"
-            for asset in "$package"/*; do
-              [ -f "$asset" ] || continue
-              name="$(basename "$asset")"
-              if [ "$name" = manifest.json ] || [ "$name" = SHA256SUMS ]; then
-                cp "$asset" "release-assets/${artifact}-${name}"
-              else
-                cp "$asset" "release-assets/$name"
+            for archive in "$package"/*.tar.gz; do
+              [ -f "$archive" ] || continue
+              package_version="$(tar -xzOf "$archive" .verzly/manifest.json | jq -er '.source_version')"
+              if [ -z "$version" ]; then
+                version="$package_version"
+              elif [ "$version" != "$package_version" ]; then
+                echo "::error::Archives report different PHP versions: $version and $package_version"
+                exit 1
               fi
+              cp "$archive" release-assets/
             done
           done
-          [ -n "$version" ] || { echo "::error::No package manifests found"; exit 1; }
+          [ -n "$version" ] || { echo "::error::No PHP archives found"; exit 1; }
+          ( cd release-assets && sha256sum * > SHA256SUMS )
           echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Create or update prerelease
         env:
