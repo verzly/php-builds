@@ -1,0 +1,63 @@
+name: Experimental PHP builds
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: PHP ${{ matrix.php_minor }} / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        php_minor: ["8.1", "8.2", "8.3", "8.4", "8.5", "8.6"]
+        os: [ubuntu-22.04, macos-15]
+        include:
+          - os: ubuntu-22.04
+            arch: x86_64
+          - os: macos-15
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            sudo apt-get update
+            sudo apt-get install -y build-essential autoconf pkg-config \
+              libssl-dev libxml2-dev libcurl4-openssl-dev libsqlite3-dev \
+              zlib1g-dev libonig-dev libreadline-dev libzip-dev libbz2-dev \
+              libpng-dev libjpeg-dev libwebp-dev libicu-dev
+          else
+            brew install autoconf pkg-config openssl@3 libxml2 curl \
+              sqlite3 zlib oniguruma readline libzip bzip2 libpng jpeg-turbo \
+              webp icu4c
+          fi
+      - name: Build and package
+        env:
+          PHP_MINOR: ${{ matrix.php_minor }}
+          TARGET_ARCH: ${{ matrix.arch }}
+          BUILD_ROOT: ${{ runner.temp }}/php-build
+        run: bash scripts/build-php.sh
+      - name: Verify relocated package
+        env:
+          PHP_MINOR: ${{ matrix.php_minor }}
+          BUILD_ROOT: ${{ runner.temp }}/php-build
+        run: python3 scripts/verify-relocation.py "$BUILD_ROOT/package" "$PHP_MINOR"
+      - name: Upload verified package
+        uses: actions/upload-artifact@v4
+        with:
+          name: php-${{ matrix.php_minor }}-${{ matrix.os }}-${{ matrix.arch }}
+          path: ${{ runner.temp }}/php-build/dist/*
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-php-${{ matrix.php_minor }}-${{ matrix.os }}-${{ matrix.arch }}
+          path: ${{ runner.temp }}/php-build/logs/*
+          if-no-files-found: ignore
+          retention-days: 14
