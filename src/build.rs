@@ -181,11 +181,14 @@ pub(crate) fn build(minor: &str, root: &Path) -> Result<PathBuf> {
         prefix.join("lib/php.ini-development"),
     )?;
     // opcache is built as a shared extension, so the shipped INI has to load it.
+    // The bare name is not resolved reliably, so point at the installed module.
     let ini = prefix.join("lib/php.ini");
     let mut ini_text = fs::read_to_string(&ini)?;
-    if !ini_text.contains("zend_extension=opcache") {
-        ini_text.push_str("\nzend_extension=opcache\n");
-        fs::write(&ini, ini_text)?;
+    if !ini_text.contains("zend_extension=") {
+        if let Some(opcache) = find_extension(&prefix, "opcache") {
+            ini_text.push_str(&format!("\nzend_extension={}\n", opcache.display()));
+            fs::write(&ini, ini_text)?;
+        }
     }
     strip_binaries(&prefix);
     relocate(&prefix)?;
@@ -236,6 +239,17 @@ fn run_logged(command: &mut Command, log: &Path) -> Result<()> {
         return Err(format!("Build command failed: {}", output.status).into());
     }
     Ok(())
+}
+
+fn find_extension(prefix: &Path, name: &str) -> Option<std::path::PathBuf> {
+    let dirs = fs::read_dir(prefix.join("lib/php/extensions")).ok()?;
+    for dir in dirs.flatten() {
+        let candidate = dir.path().join(format!("{name}.so"));
+        if candidate.exists() {
+            return Some(candidate);
+        }
+    }
+    None
 }
 
 // Debug symbols roughly triple the archive size and are not needed at runtime.
