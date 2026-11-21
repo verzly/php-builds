@@ -145,11 +145,11 @@ echo 'ok';
         package.join("bin/php")
     };
     #[cfg(target_os = "linux")]
-    check_linked_libraries("ldd", &binary, |output| {
+    check_linked_libraries("ldd", &[], &binary, |output| {
         output.lines().any(|line| line.contains("not found"))
     })?;
     #[cfg(target_os = "macos")]
-    check_linked_libraries("otool", &binary, |output| {
+    check_linked_libraries("otool", &["-L"], &binary, |output| {
         output.lines().skip(1).any(|line| {
             let Some(path) = line.split_whitespace().next() else {
                 return false;
@@ -186,10 +186,11 @@ fn capture(command: &mut Command) -> Result<String> {
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 fn check_linked_libraries(
     program: &str,
+    flags: &[&str],
     binary: &Path,
     invalid: impl FnOnce(&str) -> bool,
 ) -> Result<()> {
-    match Command::new(program).arg(binary).output() {
+    match Command::new(program).args(flags).arg(binary).output() {
         Ok(output) if output.status.success() => {
             let stdout = String::from_utf8_lossy(&output.stdout);
             if invalid(&stdout) {
