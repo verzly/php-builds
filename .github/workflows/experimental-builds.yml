@@ -66,11 +66,12 @@ jobs:
                   {"distro": "oracle-10", "image": "oraclelinux:10"},
                   {"distro": "amazonlinux-2023", "image": "amazonlinux:2023"},
                   {"distro": "arch", "image": "archlinux:base-devel", "openssl4": true},
-                  {"distro": "alpine", "image": "alpine:latest"}
+                  {"distro": "alpine", "image": "alpine:latest", "musl_new": true}
                 ] as $distros
                 | [ $minors[] as $m | $distros[] as $d
                     | select($php == "all" or $php == $m)
                     | select((($m == "8.1" or $m == "8.2" or $m == "8.3") and ($d.openssl4 == true)) | not)
+                    | select((($m == "8.1") and ($d.musl_new == true)) | not)
                     | {php_minor: $m, distro: $d.distro, image: $d.image, arch: "x86_64"} ]
               )
             }'
