@@ -128,6 +128,13 @@ pub(crate) fn download(url: &str, target: &Path) -> Result<()> {
     Ok(())
 }
 
+pub(crate) fn target_label() -> String {
+    std::env::var("PHP_BUILD_TARGET_LABEL")
+        .ok()
+        .filter(|label| !label.is_empty())
+        .unwrap_or_else(|| os_name().to_string())
+}
+
 pub(crate) fn os_name() -> &'static str {
     if cfg!(target_os = "macos") {
         "macos"

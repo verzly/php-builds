@@ -1,6 +1,6 @@
 use crate::relocate::relocate;
 use crate::resolve::{resolve, valid_minor};
-use crate::{architecture, capture, download, os_name, sha256, Result};
+use crate::{architecture, capture, download, sha256, target_label, Result};
 use flate2::{write::GzEncoder, Compression};
 use serde::Serialize;
 use std::{
@@ -175,7 +175,7 @@ pub(crate) fn build(minor: &str, root: &Path) -> Result<PathBuf> {
     let archive_name = format!(
         "php-{}-{}-{}.tar.gz",
         source.version,
-        os_name(),
+        target_label(),
         architecture()
     );
     let archive_path = root.join("dist").join(&archive_name);
@@ -185,7 +185,7 @@ pub(crate) fn build(minor: &str, root: &Path) -> Result<PathBuf> {
         php_minor: minor.into(),
         source_version: source.version,
         source_sha256: source.sha256,
-        platform: os_name().into(),
+        platform: target_label(),
         architecture: architecture().into(),
         configure_options: options,
         runtime_dependencies: "System-linked OpenSSL 3, curl, XML, SQLite, zlib, and other build-host libraries; not self-contained.".into(),

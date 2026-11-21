@@ -96,6 +96,7 @@ jobs:
       - name: Build PHP package
         env:
           PHP_MINOR: ${{ matrix.php_minor }}
+          PHP_BUILD_TARGET_LABEL: ${{ matrix.os }}
         run: target/release/php-builds build --minor "$PHP_MINOR" --root "${{ runner.temp }}/php-build"
       - name: Verify relocated package
         env:
@@ -172,6 +173,7 @@ jobs:
       - name: Build PHP package
         env:
           PHP_MINOR: ${{ matrix.php_minor }}
+          PHP_BUILD_TARGET_LABEL: ${{ matrix.distro }}
         run: target/release/php-builds build --minor "$PHP_MINOR" --root /tmp/php-build
       - name: Verify relocated package
         env:
