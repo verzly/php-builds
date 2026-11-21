@@ -12,14 +12,25 @@ Build the latest stable patch release in each PHP line from **8.1 through 8.6**,
 with matching development headers, `phpize`, `php-config`, and build support files.
 PIE uses these files to compile an extension without rebuilding PHP itself.
 
-| Build target | Architecture | Scope |
-| --- | --- | --- |
-| Ubuntu 22.04 | x86_64 | Native glibc build |
-| macOS 15 | arm64 | Native Homebrew-linked build |
+| Build target | Architecture |
+| --- | --- |
+| Ubuntu 22.04, Ubuntu 24.04 | x86_64 |
+| Debian bookworm, Debian trixie | x86_64 |
+| Fedora latest | x86_64 |
+| CentOS Stream 9, CentOS Stream 10 | x86_64 |
+| Rocky Linux 8, 9, 10 | x86_64 |
+| AlmaLinux 8, 9, 10 | x86_64 |
+| Oracle Linux 8, 9, 10 | x86_64 |
+| Amazon Linux 2023 | x86_64 |
+| Arch Linux | x86_64 |
+| Alpine latest | x86_64, musl |
+| macOS 15, macOS latest | arm64 |
 
-These are build targets, not a promise that the archives run on every Linux
-distribution or macOS version. Alpine/musl, Linux arm64, macOS Intel, Windows,
-and broader distribution validation are outside this first experiment.
+Every Linux target is built inside its own distribution image, because the
+archives link that distribution's OpenSSL, libxml2, ICU and readline. An
+archive is therefore not portable between distributions. macOS builds link
+Homebrew library locations.
+Linux arm64, macOS Intel, and Windows are outside this first experiment.
 PHP 8.1 is end-of-life; an experimental build does not restore security support.
 Future PHP lines can be added to the matrix separately.
 
@@ -32,14 +43,23 @@ or run builds. Before a manual run, approve the tools and download sources:
 - PHP release metadata and source archives from `php.net`, with SHA-256 checks.
 - The pinned PIE PHAR from the official `php/pie` GitHub release, with a SHA-256 check.
 
-Each matrix job builds the `php-builds` binary first, with
-[mr boxington](https://github.com/jdx/mr-boxington) caching the Rust compilation,
-then runs it to build and package PHP, extract the archive at a different prefix,
-remove the original installation, and compile and load Redis through PIE using
-the relocated toolchain. The extension check uses a disposable copy, leaving the
-distributed PHP archive free of that verification extension. Successful jobs
-upload the archives as workflow artifacts. Nothing is rebuilt on a schedule. The
-cache covers the Rust binary only, not PHP itself.
+Dependency installation uses a vendored copy of the mise-php dependency script,
+which handles each distribution's package names, RHEL EPEL/CRB repositories, and
+macOS Homebrew formulae.
+
+The hosted jobs build the `php-builds` binary first, with
+[mr boxington](https://github.com/jdx/mr-boxington) caching the Rust compilation.
+Container jobs install Rust with rustup because the distribution images have no
+Node.js for the cache action. Each job then builds and packages PHP, extracts the
+archive at a different prefix, removes the original installation, and compiles
+and loads Redis through PIE using the relocated toolchain. The extension check
+uses a disposable copy, leaving the distributed PHP archive free of that
+verification extension. Successful jobs upload the archives as workflow
+artifacts. Nothing is rebuilt on a schedule. The cache covers the Rust binary
+only, not PHP itself.
+
+A matrix stops at the first failure so a broken combination does not consume the
+remaining targets.
 
 A manual run can be narrowed with the `php_minor` and `target` inputs, so one
 line or one platform can be validated before the full matrix is exercised.
