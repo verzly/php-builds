@@ -17,6 +17,7 @@ on:
 
 permissions:
   contents: read
+  actions: write
 
 env:
   GH_REPO: ${{ github.repository }}
@@ -130,6 +131,12 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+      - name: Stop the whole run on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run cancel "$GITHUB_RUN_ID"
+
   build-container:
     needs: plan
     strategy:
@@ -216,6 +223,12 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+      - name: Stop the whole run on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run cancel "$GITHUB_RUN_ID"
+
   test-hosted:
     needs: [plan, build]
     runs-on: ${{ matrix.os }}
@@ -245,6 +258,12 @@ jobs:
           gh release download "php-$VERSION" --pattern "php-$VERSION-${{ matrix.os }}-${{ matrix.arch }}.tar.gz" --dir "$RUNNER_TEMP/rel"
           tar -xzf "$RUNNER_TEMP/rel/php-$VERSION-${{ matrix.os }}-${{ matrix.arch }}.tar.gz" -C "$RUNNER_TEMP/sdk"
           target/release/php-builds verify --package "$RUNNER_TEMP/sdk" --minor "$PHP_MINOR"
+
+      - name: Stop the whole run on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run cancel "$GITHUB_RUN_ID"
 
   test-container:
     needs: [plan, build-container]
@@ -305,6 +324,12 @@ jobs:
           gh release download "php-$VERSION" --pattern "php-$VERSION-${{ matrix.distro }}-${{ matrix.arch }}.tar.gz" --dir "$RUNNER_TEMP/rel"
           tar -xzf "$RUNNER_TEMP/rel/php-$VERSION-${{ matrix.distro }}-${{ matrix.arch }}.tar.gz" -C "$RUNNER_TEMP/sdk"
           target/release/php-builds verify --package "$RUNNER_TEMP/sdk" --minor "$PHP_MINOR"
+
+      - name: Stop the whole run on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run cancel "$GITHUB_RUN_ID"
 
   publish:
     needs: [plan, build, build-container, test-hosted, test-container]
