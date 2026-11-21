@@ -86,7 +86,7 @@ jobs:
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install build dependencies
         env:
           PHP_BUILD_VERSION: ${{ matrix.php_minor }}
@@ -106,7 +106,7 @@ jobs:
         run: target/release/php-builds verify --package "${{ runner.temp }}/php-build/package" --minor "$PHP_MINOR"
       - name: Upload package
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: php-${{ matrix.php_minor }}-${{ matrix.os }}-${{ matrix.arch }}
           path: ${{ runner.temp }}/php-build/dist/*
@@ -114,7 +114,7 @@ jobs:
           retention-days: 14
       - name: Upload build logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: logs-php-${{ matrix.php_minor }}-${{ matrix.os }}-${{ matrix.arch }}
           path: ${{ runner.temp }}/php-build/logs/*
@@ -161,7 +161,7 @@ jobs:
             echo "Error: no supported package manager found." >&2
             exit 1
           fi
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install build dependencies
         env:
           PHP_BUILD_VERSION: ${{ matrix.php_minor }}
@@ -183,7 +183,7 @@ jobs:
         run: target/release/php-builds verify --package /tmp/php-build/package --minor "$PHP_MINOR"
       - name: Upload package
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: php-${{ matrix.php_minor }}-${{ matrix.distro }}-${{ matrix.arch }}
           path: /tmp/php-build/dist/*
@@ -191,7 +191,7 @@ jobs:
           retention-days: 14
       - name: Upload build logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: logs-php-${{ matrix.php_minor }}-${{ matrix.distro }}-${{ matrix.arch }}
           path: /tmp/php-build/logs/*
@@ -205,8 +205,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts/
       - name: Assemble release assets

@@ -48,6 +48,7 @@ fn configure_options(prefix: &Path) -> Vec<String> {
             prefix.display()
         ),
         "--disable-cgi".into(),
+        "--disable-phpdbg".into(),
         // Extensions that the default build already enables are left implicit, so
         // the option list stays valid across every supported PHP line.
         "--without-pear".into(),
@@ -164,6 +165,7 @@ pub(crate) fn build(minor: &str, root: &Path) -> Result<PathBuf> {
         source_tree.join("php.ini-development"),
         prefix.join("lib/php.ini-development"),
     )?;
+    strip_binaries(&prefix);
     relocate(&prefix)?;
 
     let relocated = root.join("relocated");
@@ -212,6 +214,32 @@ fn run_logged(command: &mut Command, log: &Path) -> Result<()> {
         return Err(format!("Build command failed: {}", output.status).into());
     }
     Ok(())
+}
+
+// Debug symbols roughly triple the archive size and are not needed at runtime.
+fn strip_binaries(prefix: &Path) {
+    let mut targets = vec![prefix.join("bin/php")];
+    if let Ok(dirs) = fs::read_dir(prefix.join("lib/php/extensions")) {
+        for dir in dirs.flatten() {
+            if let Ok(modules) = fs::read_dir(dir.path()) {
+                for module in modules.flatten() {
+                    let path = module.path();
+                    if path
+                        .extension()
+                        .is_some_and(|ext| ext == "so" || ext == "dylib")
+                    {
+                        targets.push(path);
+                    }
+                }
+            }
+        }
+    }
+    for target in targets {
+        if target.exists() {
+            // Best effort: a missing strip must not fail the build.
+            let _ = Command::new("strip").arg(&target).status();
+        }
+    }
 }
 
 fn create_targz(source: &Path, output: &Path) -> Result<()> {
