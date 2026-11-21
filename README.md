@@ -32,12 +32,31 @@ or run builds. Before a manual run, approve the tools and download sources:
 - PHP release metadata and source archives from `php.net`, with SHA-256 checks.
 - The pinned PIE PHAR from the official `php/pie` GitHub release, with a SHA-256 check.
 
-Each matrix job is intended to build and package PHP, extract the archive at a
-different prefix, remove the original installation, and compile and load Redis
-through PIE using the relocated toolchain. The extension check uses a disposable
-copy, leaving the distributed PHP archive free of that verification extension.
-Successful jobs upload experimental workflow artifacts; there is no release
-publication or scheduled rebuilding.
+Each matrix job builds the `php-builds` binary first, with
+[mr boxington](https://github.com/jdx/mr-boxington) caching the Rust compilation,
+then runs it to build and package PHP, extract the archive at a different prefix,
+remove the original installation, and compile and load Redis through PIE using
+the relocated toolchain. The extension check uses a disposable copy, leaving the
+distributed PHP archive free of that verification extension. Successful jobs
+upload experimental workflow artifacts; there is no release publication or
+scheduled rebuilding. The cache covers the Rust binary only, not PHP itself.
+
+## Local builds
+
+The same binary builds PHP outside CI once the platform toolchain and the
+development libraries listed above are installed:
+
+```sh
+cargo build --release --locked
+./target/release/php-builds resolve --minor 8.5
+./target/release/php-builds build --minor 8.5 --root ./out
+./target/release/php-builds verify --package ./out/package --minor 8.5
+```
+
+`build` downloads the release archive from `php.net`, verifies its SHA-256, and
+fails if the compiler, `make`, or a required library is missing. `verify`
+downloads the pinned PIE PHAR and installs Redis into a disposable copy.
+Local builds have not been exercised outside the two CI targets.
 
 PHP and dependency versions can change between manual runs. Keep the generated
 metadata and checksums with an archive when comparing results.

@@ -35,18 +35,19 @@ jobs:
               sqlite3 zlib oniguruma readline libzip bzip2 libpng jpeg-turbo \
               webp icu4c
           fi
-      - name: Build and package
+      - uses: jdx/mr-boxington-action@v1
+      - name: Build Rust CLI
+        run: mbx build --release --locked
+      - name: Build PHP package
         env:
           PHP_MINOR: ${{ matrix.php_minor }}
-          TARGET_ARCH: ${{ matrix.arch }}
-          BUILD_ROOT: ${{ runner.temp }}/php-build
-        run: bash scripts/build-php.sh
+        run: target/release/php-builds build --minor "$PHP_MINOR" --root "${{ runner.temp }}/php-build"
       - name: Verify relocated package
         env:
           PHP_MINOR: ${{ matrix.php_minor }}
-          BUILD_ROOT: ${{ runner.temp }}/php-build
-        run: python3 scripts/verify-relocation.py "$BUILD_ROOT/package" "$PHP_MINOR"
-      - name: Upload verified package
+        run: target/release/php-builds verify --package "${{ runner.temp }}/php-build/package" --minor "$PHP_MINOR"
+      - name: Upload package
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: php-${{ matrix.php_minor }}-${{ matrix.os }}-${{ matrix.arch }}
