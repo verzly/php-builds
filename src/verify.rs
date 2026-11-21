@@ -77,16 +77,16 @@ pub(crate) fn verify(package: &Path, minor: &str) -> Result<()> {
     }
     run(Command::new(bin.join("php"))
         .arg(&pie)
-        .args([
-            "--with-php-config",
-            bin.join("php-config").to_str().unwrap(),
-            "--with-phpize-path",
-            bin.join("phpize").to_str().unwrap(),
-            "--working-dir",
-            work.to_str().unwrap(),
-            "install",
-            "phpredis/phpredis:6.3.0",
-        ])
+        .arg(format!(
+            "--with-php-config={}",
+            bin.join("php-config").display()
+        ))
+        .arg(format!(
+            "--with-phpize-path={}",
+            bin.join("phpize").display()
+        ))
+        .arg(format!("--working-dir={}", work.display()))
+        .args(["install", "phpredis/phpredis:6.3.0"])
         .envs(&environment))?;
     let loaded = capture(
         Command::new(bin.join("php"))
