@@ -80,7 +80,7 @@ jobs:
     name: PHP ${{ matrix.php_minor }} / ${{ matrix.os }}
     needs: plan
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     runs-on: ${{ matrix.os }}
     steps:
@@ -121,7 +121,7 @@ jobs:
   build-container:
     needs: plan
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix: ${{ fromJSON(needs.plan.outputs.containers) }}
     runs-on: ubuntu-latest
     container: ${{ matrix.image }}
