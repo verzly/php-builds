@@ -39,6 +39,19 @@ fn pkg_config_exists(name: &str) -> bool {
         .unwrap_or(false)
 }
 
+// Homebrew keeps bzip2 out of the default search path, so point configure at it.
+fn bz2_option() -> String {
+    if cfg!(target_os = "macos") {
+        if let Ok(prefix) = capture(Command::new("brew").args(["--prefix", "bzip2"])) {
+            let prefix = prefix.trim();
+            if !prefix.is_empty() {
+                return format!("--with-bz2={prefix}");
+            }
+        }
+    }
+    "--with-bz2".into()
+}
+
 fn configure_options(prefix: &Path) -> Vec<String> {
     vec![
         format!("--prefix={}", prefix.display()),
@@ -55,11 +68,13 @@ fn configure_options(prefix: &Path) -> Vec<String> {
         "--with-openssl".into(),
         "--with-curl".into(),
         "--with-zlib".into(),
+        bz2_option(),
         "--with-readline".into(),
         "--with-pdo-sqlite".into(),
         "--with-sqlite3".into(),
         "--enable-mbstring".into(),
         "--enable-intl".into(),
+        "--enable-opcache".into(),
     ]
 }
 
@@ -165,6 +180,13 @@ pub(crate) fn build(minor: &str, root: &Path) -> Result<PathBuf> {
         source_tree.join("php.ini-development"),
         prefix.join("lib/php.ini-development"),
     )?;
+    // opcache is built as a shared extension, so the shipped INI has to load it.
+    let ini = prefix.join("lib/php.ini");
+    let mut ini_text = fs::read_to_string(&ini)?;
+    if !ini_text.contains("zend_extension=opcache") {
+        ini_text.push_str("\nzend_extension=opcache\n");
+        fs::write(&ini, ini_text)?;
+    }
     strip_binaries(&prefix);
     relocate(&prefix)?;
 
