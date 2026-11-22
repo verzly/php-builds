@@ -47,7 +47,11 @@ pub(crate) fn selfcheck(package: &Path, minor: &str) -> Result<()> {
             .args(["-m"])
             .envs(&environment),
     )?;
-    let modules: BTreeSet<_> = modules.lines().map(str::trim).collect();
+    // php -m prints PDO_ODBC in upper case while other drivers are lower case.
+    let modules: BTreeSet<String> = modules
+        .lines()
+        .map(|line| line.trim().to_lowercase())
+        .collect();
     let required = [
         "Core",
         "ctype",
@@ -111,7 +115,7 @@ pub(crate) fn selfcheck(package: &Path, minor: &str) -> Result<()> {
     ];
     let missing: Vec<_> = required
         .iter()
-        .filter(|module| !modules.contains(**module))
+        .filter(|module| !modules.contains(&module.to_lowercase()))
         .copied()
         .collect();
     if !missing.is_empty() {
