@@ -53,7 +53,7 @@ fn bz2_option() -> String {
 }
 
 fn configure_options(prefix: &Path) -> Vec<String> {
-    vec![
+    let mut options = vec![
         format!("--prefix={}", prefix.display()),
         format!("--with-config-file-path={}/lib", prefix.display()),
         format!(
@@ -83,8 +83,8 @@ fn configure_options(prefix: &Path) -> Vec<String> {
         "--with-unixODBC".into(),
         "--with-pdo-dblib".into(),
         "--enable-dba".into(),
-        "--with-inifile".into(),
-        "--with-flatfile".into(),
+        "--enable-inifile".into(),
+        "--enable-flatfile".into(),
         "--enable-mbstring".into(),
         "--enable-intl".into(),
         "--enable-bcmath".into(),
@@ -110,8 +110,15 @@ fn configure_options(prefix: &Path) -> Vec<String> {
         "--enable-calendar".into(),
         "--enable-ftp".into(),
         "--enable-sockets".into(),
-        "--enable-opcache".into(),
-    ]
+    ];
+
+    // EL-family images keep their libraries in lib64, and PHP otherwise probes
+    // lib when it looks for the LDAP libraries.
+    if cfg!(target_os = "linux") && Path::new("/usr/lib64").is_dir() {
+        options.push("--with-libdir=lib64".into());
+    }
+
+    options
 }
 
 pub(crate) fn build(minor: &str, root: &Path) -> Result<PathBuf> {
@@ -149,6 +156,8 @@ pub(crate) fn build(minor: &str, root: &Path) -> Result<PathBuf> {
         options.push(format!("--with-iconv={iconv}"));
         let readline = capture(Command::new("brew").args(["--prefix", "readline"]))?;
         options.push(format!("--with-readline={readline}"));
+        let gettext = capture(Command::new("brew").args(["--prefix", "gettext"]))?;
+        options.push(format!("--with-gettext={gettext}"));
         options.push("--with-zip".into());
     } else if pkg_config_exists("libzip") {
         options.push("--with-zip".into());
@@ -184,6 +193,7 @@ pub(crate) fn build(minor: &str, root: &Path) -> Result<PathBuf> {
             "libxslt",
             "tidy-html5",
             "net-snmp",
+            "gettext",
         ] {
             let Ok(prefix) = capture(Command::new("brew").args(["--prefix", formula])) else {
                 continue;
@@ -291,11 +301,15 @@ fn run_logged(command: &mut Command, log: &Path) -> Result<()> {
 }
 
 fn find_extension(prefix: &Path, name: &str) -> Option<std::path::PathBuf> {
-    let dirs = fs::read_dir(prefix.join("lib/php/extensions")).ok()?;
-    for dir in dirs.flatten() {
-        let candidate = dir.path().join(format!("{name}.so"));
-        if candidate.exists() {
-            return Some(candidate);
+    for libdir in ["lib", "lib64"] {
+        let Ok(dirs) = fs::read_dir(prefix.join(libdir).join("php/extensions")) else {
+            continue;
+        };
+        for dir in dirs.flatten() {
+            let candidate = dir.path().join(format!("{name}.so"));
+            if candidate.exists() {
+                return Some(candidate);
+            }
         }
     }
     None
@@ -309,7 +323,10 @@ fn strip_binaries(prefix: &Path) {
         return;
     }
     let mut targets = vec![prefix.join("bin/php")];
-    if let Ok(dirs) = fs::read_dir(prefix.join("lib/php/extensions")) {
+    for libdir in ["lib", "lib64"] {
+        let Ok(dirs) = fs::read_dir(prefix.join(libdir).join("php/extensions")) else {
+            continue;
+        };
         for dir in dirs.flatten() {
             if let Ok(modules) = fs::read_dir(dir.path()) {
                 for module in modules.flatten() {
