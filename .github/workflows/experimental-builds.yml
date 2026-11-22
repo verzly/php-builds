@@ -97,7 +97,7 @@ jobs:
       - name: Install build dependencies
         env:
           PHP_BUILD_VERSION: ${{ matrix.php_minor }}
-          PHP_CONFIGURE_OPTIONS: "--with-openssl --with-curl --with-zlib --with-zip --with-bz2 --with-readline --with-pdo-sqlite --with-sqlite3 --enable-mbstring --enable-intl"
+          PHP_CONFIGURE_OPTIONS: "--with-openssl --with-curl --with-zlib --with-zip --with-bz2 --with-readline --with-gettext --with-mysqli=mysqlnd --with-pdo-mysql=mysqlnd --with-pgsql --with-pdo-pgsql --with-pdo-sqlite --with-sqlite3 --with-pdo-odbc=unixODBC --with-unixODBC --with-pdo-dblib --enable-dba --with-inifile --with-flatfile --enable-mbstring --enable-intl --enable-bcmath --with-gmp --with-sodium --with-xsl --with-tidy --with-ldap --with-snmp --enable-gd --with-external-gd --with-jpeg --with-freetype --with-webp --enable-soap --enable-pcntl --enable-sysvmsg --enable-sysvsem --enable-sysvshm --enable-shmop --enable-exif --enable-calendar --enable-ftp --enable-sockets --enable-opcache"
         run: sh ci/install-dependencies.sh
       - uses: jdx/mr-boxington-action@v1
       - name: Build Rust CLI
@@ -189,7 +189,7 @@ jobs:
       - name: Install build dependencies
         env:
           PHP_BUILD_VERSION: ${{ matrix.php_minor }}
-          PHP_CONFIGURE_OPTIONS: "--with-openssl --with-curl --with-zlib --with-zip --with-bz2 --with-readline --with-pdo-sqlite --with-sqlite3 --enable-mbstring --enable-intl"
+          PHP_CONFIGURE_OPTIONS: "--with-openssl --with-curl --with-zlib --with-zip --with-bz2 --with-readline --with-gettext --with-mysqli=mysqlnd --with-pdo-mysql=mysqlnd --with-pgsql --with-pdo-pgsql --with-pdo-sqlite --with-sqlite3 --with-pdo-odbc=unixODBC --with-unixODBC --with-pdo-dblib --enable-dba --with-inifile --with-flatfile --enable-mbstring --enable-intl --enable-bcmath --with-gmp --with-sodium --with-xsl --with-tidy --with-ldap --with-snmp --enable-gd --with-external-gd --with-jpeg --with-freetype --with-webp --enable-soap --enable-pcntl --enable-sysvmsg --enable-sysvsem --enable-sysvshm --enable-shmop --enable-exif --enable-calendar --enable-ftp --enable-sockets --enable-opcache"
         run: sh ci/install-dependencies.sh
       - name: Install Rust toolchain
         run: |
@@ -245,7 +245,7 @@ jobs:
       - name: Install build dependencies
         env:
           PHP_BUILD_VERSION: ${{ matrix.php_minor }}
-          PHP_CONFIGURE_OPTIONS: "--with-openssl --with-curl --with-zlib --with-zip --with-bz2 --with-readline --with-pdo-sqlite --with-sqlite3 --enable-mbstring --enable-intl"
+          PHP_CONFIGURE_OPTIONS: "--with-openssl --with-curl --with-zlib --with-zip --with-bz2 --with-readline --with-gettext --with-mysqli=mysqlnd --with-pdo-mysql=mysqlnd --with-pgsql --with-pdo-pgsql --with-pdo-sqlite --with-sqlite3 --with-pdo-odbc=unixODBC --with-unixODBC --with-pdo-dblib --enable-dba --with-inifile --with-flatfile --enable-mbstring --enable-intl --enable-bcmath --with-gmp --with-sodium --with-xsl --with-tidy --with-ldap --with-snmp --enable-gd --with-external-gd --with-jpeg --with-freetype --with-webp --enable-soap --enable-pcntl --enable-sysvmsg --enable-sysvsem --enable-sysvshm --enable-shmop --enable-exif --enable-calendar --enable-ftp --enable-sockets --enable-opcache"
         run: sh ci/install-dependencies.sh
       - uses: jdx/mr-boxington-action@v1
       - name: Build Rust CLI
@@ -321,7 +321,7 @@ jobs:
       - name: Install build dependencies
         env:
           PHP_BUILD_VERSION: ${{ matrix.php_minor }}
-          PHP_CONFIGURE_OPTIONS: "--with-openssl --with-curl --with-zlib --with-zip --with-bz2 --with-readline --with-pdo-sqlite --with-sqlite3 --enable-mbstring --enable-intl"
+          PHP_CONFIGURE_OPTIONS: "--with-openssl --with-curl --with-zlib --with-zip --with-bz2 --with-readline --with-gettext --with-mysqli=mysqlnd --with-pdo-mysql=mysqlnd --with-pgsql --with-pdo-pgsql --with-pdo-sqlite --with-sqlite3 --with-pdo-odbc=unixODBC --with-unixODBC --with-pdo-dblib --enable-dba --with-inifile --with-flatfile --enable-mbstring --enable-intl --enable-bcmath --with-gmp --with-sodium --with-xsl --with-tidy --with-ldap --with-snmp --enable-gd --with-external-gd --with-jpeg --with-freetype --with-webp --enable-soap --enable-pcntl --enable-sysvmsg --enable-sysvsem --enable-sysvshm --enable-shmop --enable-exif --enable-calendar --enable-ftp --enable-sockets --enable-opcache"
         run: sh ci/install-dependencies.sh
       - name: Install Rust toolchain
         run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal

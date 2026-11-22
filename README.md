@@ -35,6 +35,17 @@ Linux arm64, macOS Intel, and Windows are outside this first experiment.
 Fedora and Arch Linux ship OpenSSL 4.x, which PHP before 8.4.28 cannot compile against, so those two targets build only PHP 8.4.28 and newer. PHP 8.1 is end-of-life; an experimental build does not restore security support.
 Future PHP lines can be added to the matrix separately.
 
+## Extension coverage
+
+Each build enables what a typical Laravel, Symfony or WordPress project needs:
+MySQL/MariaDB (`mysqli`, `pdo_mysql`, `mysqlnd`), PostgreSQL (`pgsql`,
+`pdo_pgsql`), SQLite, ODBC, SQL Server through FreeTDS (`pdo_dblib`), `dba`,
+`bcmath`, `gmp`, `sodium`, `intl`, `gd`, `zip`, `xsl`, `tidy`, `ldap`, `snmp`,
+`soap`, `exif`, `gettext`, the `pcntl`/sysv family, and opcache. Oracle
+(`oci8`, `pdo_oci`) is not included because it requires the non-redistributable
+Oracle Instant Client. Third-party extensions such as Redis, Xdebug or Imagick
+are installed later with PIE.
+
 ## Build and verification
 
 The workflow is **manual only**. Opening or updating a PR does not install tools

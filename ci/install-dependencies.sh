@@ -147,7 +147,7 @@ extension_uses_group() {
 # either enables the feature explicitly or probes for it before adding the flag.
 source_build_uses_group_by_default() {
   case "$1" in
-    bz2|gd|gmp|pgsql|sodium|zip)
+    bz2|gd|gmp|pgsql|sodium|zip|odbc|dblib)
       return 0
       ;;
     *)
@@ -189,6 +189,8 @@ configure_uses_group() {
     tidy) configure_requests --with-tidy ;;
     xsl) configure_requests --with-xsl ;;
     zip) configure_requests --with-zip ;;
+    odbc) configure_requests --with-pdo-odbc --with-unixODBC ;;
+    dblib) configure_requests --with-pdo-dblib ;;
     *) return 1 ;;
   esac
 }
@@ -537,6 +539,8 @@ install_debian_dependencies() {
   if install_group_note xsl; then apt_install libxslt1-dev; fi
   if install_group_note tidy; then apt_install libtidy-dev; fi
   if install_group_note snmp; then apt_install libsnmp-dev; fi
+  if install_group_note odbc; then apt_install unixodbc-dev; fi
+  if install_group_note dblib; then apt_install freetds-dev; fi
   if install_group_note imap; then apt_install libc-client-dev libkrb5-dev; fi
   if install_group_note mcrypt; then apt_install libmcrypt-dev || warn "libmcrypt-dev is unavailable on this Debian/Ubuntu release"; fi
 
@@ -568,6 +572,8 @@ install_fedora_dependencies() {
   if install_group_note xsl; then dnf_install libxslt-devel; fi
   if install_group_note tidy; then dnf_install libtidy-devel; fi
   if install_group_note snmp; then dnf_install net-snmp-devel; fi
+  if install_group_note odbc; then dnf_install unixODBC-devel; fi
+  if install_group_note dblib; then dnf_install freetds-devel; fi
   if install_group_note imap; then dnf_install libc-client-devel krb5-devel; fi
   if install_group_note mcrypt; then dnf_install libmcrypt-devel || warn "libmcrypt-devel is unavailable on this Fedora release"; fi
 
@@ -605,6 +611,8 @@ install_rhel_dependencies() {
   if install_group_note xsl; then rhel_install_optional libxslt-devel; fi
   if install_group_note tidy; then rhel_install_optional libtidy-devel; fi
   if install_group_note snmp; then rhel_install_optional net-snmp-devel; fi
+  if install_group_note odbc; then rhel_install_optional unixODBC-devel; fi
+  if install_group_note dblib; then rhel_install_optional freetds-devel; fi
   if install_group_note imap; then rhel_install_optional libc-client-devel krb5-devel; fi
   if install_group_note mcrypt; then rhel_install_optional libmcrypt-devel; fi
 
@@ -658,6 +666,8 @@ install_arch_dependencies() {
   if install_group_note xsl; then pacman_install libxslt; fi
   if install_group_note tidy; then pacman_install tidy; fi
   if install_group_note snmp; then pacman_install net-snmp; fi
+  if install_group_note odbc; then pacman_install unixodbc; fi
+  if install_group_note dblib; then pacman_install freetds; fi
   if install_group_note imap; then pacman_install uw-imap krb5; fi
   if install_group_note mcrypt; then pacman_install libmcrypt; fi
 
@@ -692,6 +702,8 @@ install_amazonlinux_dependencies() {
   if install_group_note xsl; then dnf_install libxslt-devel; fi
   if install_group_note tidy; then dnf_install libtidy-devel || warn "libtidy-devel is unavailable on this Amazon Linux release"; fi
   if install_group_note snmp; then dnf_install net-snmp-devel; fi
+  if install_group_note odbc; then dnf_install unixODBC-devel; fi
+  if install_group_note dblib; then dnf_install freetds-devel; fi
   if install_group_note imap; then dnf_install libc-client-devel krb5-devel || warn "IMAP development packages are unavailable on this Amazon Linux release"; fi
   if install_group_note mcrypt; then dnf_install libmcrypt-devel || warn "libmcrypt-devel is unavailable on this Amazon Linux release"; fi
 
@@ -726,6 +738,8 @@ install_alpine_dependencies() {
   if install_group_note xsl; then apk_install libxslt-dev; fi
   if install_group_note tidy; then apk_install tidyhtml-dev || warn "tidyhtml-dev is unavailable on this Alpine release"; fi
   if install_group_note snmp; then apk_install net-snmp-dev; fi
+  if install_group_note odbc; then apk_install unixodbc-dev; fi
+  if install_group_note dblib; then apk_install freetds-dev; fi
   if install_group_note imap; then apk_install imap-dev || warn "IMAP development packages are unavailable on this Alpine release"; fi
   if install_group_note mcrypt; then apk_install libmcrypt-dev || warn "libmcrypt-dev is unavailable on this Alpine release"; fi
 
@@ -758,6 +772,8 @@ install_macos_dependencies() {
   if install_group_note xsl; then brew_install libxslt; fi
   if install_group_note tidy; then brew_install tidy-html5; fi
   if install_group_note snmp; then brew_install net-snmp; fi
+  if install_group_note odbc; then brew_install unixodbc; fi
+  if install_group_note dblib; then brew_install freetds; fi
   if install_group_note imap; then brew_install imap-uw krb5; fi
   if install_group_note mcrypt; then brew_install mcrypt || warn "mcrypt is unavailable or deprecated in Homebrew"; fi
 

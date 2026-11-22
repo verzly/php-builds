@@ -64,16 +64,52 @@ fn configure_options(prefix: &Path) -> Vec<String> {
         "--disable-phpdbg".into(),
         // Extensions that the default build already enables are left implicit, so
         // the option list stays valid across every supported PHP line.
+        // Everything a Laravel, Symfony or WordPress project expects, so users do
+        // not have to rebuild PHP for a bundled extension.
         "--without-pear".into(),
         "--with-openssl".into(),
         "--with-curl".into(),
         "--with-zlib".into(),
         bz2_option(),
         "--with-readline".into(),
+        "--with-gettext".into(),
+        "--with-mysqli=mysqlnd".into(),
+        "--with-pdo-mysql=mysqlnd".into(),
+        "--with-pgsql".into(),
+        "--with-pdo-pgsql".into(),
         "--with-pdo-sqlite".into(),
         "--with-sqlite3".into(),
+        "--with-pdo-odbc=unixODBC".into(),
+        "--with-unixODBC".into(),
+        "--with-pdo-dblib".into(),
+        "--enable-dba".into(),
+        "--with-inifile".into(),
+        "--with-flatfile".into(),
         "--enable-mbstring".into(),
         "--enable-intl".into(),
+        "--enable-bcmath".into(),
+        "--with-gmp".into(),
+        "--with-sodium".into(),
+        "--with-zip".into(),
+        "--with-xsl".into(),
+        "--with-tidy".into(),
+        "--with-ldap".into(),
+        "--with-snmp".into(),
+        "--enable-gd".into(),
+        "--with-external-gd".into(),
+        "--with-jpeg".into(),
+        "--with-freetype".into(),
+        "--with-webp".into(),
+        "--enable-soap".into(),
+        "--enable-pcntl".into(),
+        "--enable-sysvmsg".into(),
+        "--enable-sysvsem".into(),
+        "--enable-sysvshm".into(),
+        "--enable-shmop".into(),
+        "--enable-exif".into(),
+        "--enable-calendar".into(),
+        "--enable-ftp".into(),
+        "--enable-sockets".into(),
         "--enable-opcache".into(),
     ]
 }
@@ -137,8 +173,21 @@ pub(crate) fn build(minor: &str, root: &Path) -> Result<PathBuf> {
             "jpeg-turbo",
             "webp",
             "icu4c",
+            "freetype",
+            "gd",
+            "gmp",
+            "libsodium",
+            "libpq",
+            "unixodbc",
+            "freetds",
+            "openldap",
+            "libxslt",
+            "tidy-html5",
+            "net-snmp",
         ] {
-            let prefix = capture(Command::new("brew").args(["--prefix", formula]))?;
+            let Ok(prefix) = capture(Command::new("brew").args(["--prefix", formula])) else {
+                continue;
+            };
             pkg_config.push(format!("{prefix}/lib/pkgconfig"));
             pkg_config.push(format!("{prefix}/share/pkgconfig"));
             cppflags.push(format!("-I{prefix}/include"));

@@ -77,6 +77,36 @@ pub(crate) fn selfcheck(package: &Path, minor: &str) -> Result<()> {
         "zip",
         "zlib",
         "bz2",
+        "bcmath",
+        "calendar",
+        "dba",
+        "dom",
+        "exif",
+        "ftp",
+        "gd",
+        "gettext",
+        "gmp",
+        "ldap",
+        "mysqli",
+        "mysqlnd",
+        "pdo_dblib",
+        "pdo_mysql",
+        "pdo_odbc",
+        "pdo_pgsql",
+        "pgsql",
+        "SimpleXML",
+        "snmp",
+        "soap",
+        "sockets",
+        "sodium",
+        "sysvmsg",
+        "sysvsem",
+        "sysvshm",
+        "tidy",
+        "xml",
+        "xmlreader",
+        "xmlwriter",
+        "xsl",
         "Zend OPcache",
     ];
     let missing: Vec<_> = required
@@ -107,6 +137,17 @@ $checks = [
     'Zend OPcache' => fn() => extension_loaded('Zend OPcache'),
     'Phar' => fn() => class_exists('Phar'),
     'iconv' => fn() => function_exists('iconv'),
+    'bcadd' => fn() => bcadd('1', '1') === '2',
+    'gmp' => fn() => gmp_strval(gmp_init('2')) === '2',
+    'sodium' => fn() => function_exists('sodium_crypto_secretbox'),
+    'SoapClient' => fn() => class_exists('SoapClient'),
+    'mysqli' => fn() => class_exists('mysqli'),
+    'pgsql' => fn() => function_exists('pg_connect'),
+    'odbc' => fn() => function_exists('odbc_connect'),
+    'dba' => fn() => function_exists('dba_open'),
+    'XSLTProcessor' => fn() => class_exists('XSLTProcessor'),
+    'gd' => fn() => function_exists('imagecreatetruecolor'),
+    'pdo drivers' => fn() => in_array('mysql', PDO::getAvailableDrivers(), true),
 ];
 $failed = [];
 foreach ($checks as $name => $check) {
@@ -135,7 +176,7 @@ echo 'ok';
     if String::from_utf8(feature_output.stdout)?.trim() != "ok" {
         return Err("PHP feature checks returned unexpected output".into());
     }
-    println!("PHP features: all 13 runtime checks passed");
+    println!("PHP features: all runtime checks passed");
 
     // The relocated SDK keeps the real binary as php.real behind a wrapper.
     let real = package.join("bin/php.real");
