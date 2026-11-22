@@ -88,6 +88,7 @@ jobs:
     needs: plan
     permissions:
       contents: write
+      actions: write
     strategy:
       fail-fast: true
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
@@ -156,6 +157,7 @@ jobs:
       LDFLAGS: -pie
     permissions:
       contents: write
+      actions: write
     defaults:
       run:
         shell: sh
@@ -237,6 +239,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
+      actions: write
     strategy:
       fail-fast: true
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
@@ -280,6 +283,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
     container: ${{ matrix.image }}
     strategy:
       fail-fast: true
@@ -357,6 +361,7 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       contents: write
+      actions: write
     steps:
       - uses: actions/checkout@v7
       - uses: jdx/mr-boxington-action@v1

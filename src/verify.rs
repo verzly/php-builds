@@ -79,19 +79,34 @@ pub(crate) fn verify(package: &Path, minor: &str) -> Result<()> {
     if sha256(&pie)? != PIE_SHA256 {
         return Err("PIE 1.5.5 checksum mismatch".into());
     }
-    run(Command::new(bin.join("php"))
-        .arg(&pie)
-        .arg(format!(
-            "--with-php-config={}",
-            bin.join("php-config").display()
-        ))
-        .arg(format!(
-            "--with-phpize-path={}",
-            bin.join("phpize").display()
-        ))
-        .arg(format!("--working-dir={}", work.display()))
-        .args(["install", "phpredis/phpredis:6.3.0"])
-        .envs(&environment))?;
+    let pie_install = || {
+        run(Command::new(bin.join("php"))
+            .arg(&pie)
+            .arg(format!(
+                "--with-php-config={}",
+                bin.join("php-config").display()
+            ))
+            .arg(format!(
+                "--with-phpize-path={}",
+                bin.join("phpize").display()
+            ))
+            .arg(format!("--working-dir={}", work.display()))
+            .args(["install", "phpredis/phpredis:6.3.0"])
+            .envs(&environment))
+    };
+    // PIE fetches the extension from GitHub, which occasionally answers 5xx.
+    let mut attempt = 0;
+    loop {
+        attempt += 1;
+        match pie_install() {
+            Ok(()) => break,
+            Err(error) if attempt < 3 => {
+                eprintln!("Retrying the PIE install: {error}");
+                std::thread::sleep(std::time::Duration::from_secs(15 * attempt));
+            }
+            Err(error) => return Err(error),
+        }
+    }
     let loaded = capture(
         Command::new(bin.join("php"))
             .args(["-r", "echo extension_loaded('redis') ? 'yes' : 'no';"])
