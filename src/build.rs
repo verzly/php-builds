@@ -241,16 +241,10 @@ pub(crate) fn build(minor: &str, root: &Path) -> Result<PathBuf> {
         source_tree.join("php.ini-development"),
         prefix.join("lib/php.ini-development"),
     )?;
-    // opcache is built as a shared extension, so the shipped INI has to load it.
-    // The bare name is not resolved reliably, so point at the installed module.
-    let ini = prefix.join("lib/php.ini");
-    let mut ini_text = fs::read_to_string(&ini)?;
-    if !ini_text.contains("zend_extension=") {
-        if let Some(opcache) = find_extension(&prefix, "opcache") {
-            ini_text.push_str(&format!("\nzend_extension={}\n", opcache.display()));
-            fs::write(&ini, ini_text)?;
-        }
-    }
+    // Shared extensions are not compiled into the binary, so the shipped INI has
+    // to load them. The wrapper sets extension_dir, so a bare file name keeps the
+    // configuration relocatable.
+    write_extension_ini(&prefix)?;
     strip_binaries(&prefix);
     relocate(&prefix)?;
 
@@ -302,19 +296,37 @@ fn run_logged(command: &mut Command, log: &Path) -> Result<()> {
     Ok(())
 }
 
-fn find_extension(prefix: &Path, name: &str) -> Option<std::path::PathBuf> {
+fn write_extension_ini(prefix: &Path) -> Result<()> {
+    let conf = prefix.join("etc/conf.d");
     for libdir in ["lib", "lib64"] {
         let Ok(dirs) = fs::read_dir(prefix.join(libdir).join("php/extensions")) else {
             continue;
         };
         for dir in dirs.flatten() {
-            let candidate = dir.path().join(format!("{name}.so"));
-            if candidate.exists() {
-                return Some(candidate);
+            let Ok(modules) = fs::read_dir(dir.path()) else {
+                continue;
+            };
+            for module in modules.flatten() {
+                let path = module.path();
+                if path.extension().is_none_or(|ext| ext != "so") {
+                    continue;
+                }
+                let Some(name) = path.file_stem().and_then(|stem| stem.to_str()) else {
+                    continue;
+                };
+                let directive = if name == "opcache" {
+                    "zend_extension"
+                } else {
+                    "extension"
+                };
+                fs::write(
+                    conf.join(format!("{name}.ini")),
+                    format!("{directive}={name}.so\n"),
+                )?;
             }
         }
     }
-    None
+    Ok(())
 }
 
 // Debug symbols roughly triple the archive size and are not needed at runtime.
