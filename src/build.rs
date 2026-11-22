@@ -158,6 +158,8 @@ pub(crate) fn build(minor: &str, root: &Path) -> Result<PathBuf> {
         options.push(format!("--with-readline={readline}"));
         let gettext = capture(Command::new("brew").args(["--prefix", "gettext"]))?;
         options.push(format!("--with-gettext={gettext}"));
+        let tidy = capture(Command::new("brew").args(["--prefix", "tidy-html5"]))?;
+        options.push(format!("--with-tidy={tidy}"));
         options.push("--with-zip".into());
     } else if pkg_config_exists("libzip") {
         options.push("--with-zip".into());
