@@ -113,7 +113,7 @@ jobs:
           PHP_BUILD_VERSION: ${{ matrix.php_minor }}
           PHP_CONFIGURE_OPTIONS: "--with-openssl --with-curl --with-zlib --with-zip --with-bz2 --with-readline --with-gettext --with-mysqli=mysqlnd --with-pdo-mysql=mysqlnd --with-pgsql --with-pdo-pgsql --with-pdo-sqlite --with-sqlite3 --with-pdo-odbc=unixODBC --with-unixODBC --with-pdo-dblib --enable-dba --with-inifile --with-flatfile --enable-mbstring --enable-intl --enable-bcmath --with-gmp --with-sodium --with-xsl --with-tidy --with-ldap --with-snmp --enable-gd --with-external-gd --with-jpeg --with-freetype --with-webp --enable-soap --enable-pcntl --enable-sysvmsg --enable-sysvsem --enable-sysvshm --enable-shmop --enable-exif --enable-calendar --enable-ftp --enable-sockets --enable-opcache"
         run: sh ci/install-dependencies.sh
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -269,7 +269,7 @@ jobs:
           PHP_BUILD_VERSION: ${{ matrix.php_minor }}
           PHP_CONFIGURE_OPTIONS: "--with-openssl --with-curl --with-zlib --with-zip --with-bz2 --with-readline --with-gettext --with-mysqli=mysqlnd --with-pdo-mysql=mysqlnd --with-pgsql --with-pdo-pgsql --with-pdo-sqlite --with-sqlite3 --with-pdo-odbc=unixODBC --with-unixODBC --with-pdo-dblib --enable-dba --with-inifile --with-flatfile --enable-mbstring --enable-intl --enable-bcmath --with-gmp --with-sodium --with-xsl --with-tidy --with-ldap --with-snmp --enable-gd --with-external-gd --with-jpeg --with-freetype --with-webp --enable-soap --enable-pcntl --enable-sysvmsg --enable-sysvsem --enable-sysvshm --enable-shmop --enable-exif --enable-calendar --enable-ftp --enable-sockets --enable-opcache"
         run: sh ci/install-dependencies.sh
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -401,7 +401,7 @@ jobs:
       actions: write
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
