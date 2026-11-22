@@ -59,10 +59,10 @@ Dependency installation uses a vendored copy of the mise-php dependency script,
 which handles each distribution's package names, RHEL EPEL/CRB repositories, and
 macOS Homebrew formulae.
 
-The hosted jobs build the `php-builds` binary first, with
-[mr boxington](https://github.com/jdx/mr-boxington) caching the Rust compilation.
-Container jobs install Rust with rustup because the distribution images have no
-Node.js for the cache action. Each job then builds and packages PHP, extracts the
+The hosted jobs build the `php-builds` binary first and cache the Cargo registry
+and `target` directory with `actions/cache`. Container jobs install Rust with
+rustup and rebuild the binary, because the distribution images ship neither
+Node.js nor a cache backend for the action. Each job then builds and packages PHP, extracts the
 archive at a different prefix, removes the original installation, and compiles
 and loads Redis through PIE using the relocated toolchain. The extension check
 uses a disposable copy, leaving the distributed PHP archive free of that
