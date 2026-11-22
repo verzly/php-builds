@@ -148,6 +148,8 @@ jobs:
     env:
       # rustup refuses to run when HOME is /github/home but euid 0 resolves /root.
       HOME: /root
+      # The runner mounts /root/.docker/config.json for another uid; point at an empty config.
+      DOCKER_CONFIG: /tmp/docker-empty
       # EL8 toolchains link extension objects into a PIE executable by default.
       CFLAGS: -fPIC
       CXXFLAGS: -fPIC
@@ -179,6 +181,7 @@ jobs:
             echo "Error: no supported package manager found." >&2
             exit 1
           fi
+          mkdir -p "$DOCKER_CONFIG"
           curl -fsSL https://github.com/cli/cli/releases/download/v2.76.2/gh_2.76.2_linux_amd64.tar.gz \
             | tar -xz --strip-components=2 -C /usr/local/bin gh_2.76.2_linux_amd64/bin/gh
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -283,6 +286,8 @@ jobs:
       matrix: ${{ fromJSON(needs.plan.outputs.containers) }}
     env:
       HOME: /root
+      # The runner mounts /root/.docker/config.json for another uid; point at an empty config.
+      DOCKER_CONFIG: /tmp/docker-empty
     defaults:
       run:
         shell: sh
@@ -308,6 +313,7 @@ jobs:
             echo "Error: no supported package manager found." >&2
             exit 1
           fi
+          mkdir -p "$DOCKER_CONFIG"
           curl -fsSL https://github.com/cli/cli/releases/download/v2.76.2/gh_2.76.2_linux_amd64.tar.gz \
             | tar -xz --strip-components=2 -C /usr/local/bin gh_2.76.2_linux_amd64/bin/gh
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
