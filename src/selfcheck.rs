@@ -163,6 +163,10 @@ echo 'ok';
             } else {
                 Path::new(path).to_path_buf()
             };
+            // System libraries live in the dyld shared cache, not on disk.
+            if path.starts_with("/usr/lib") || path.starts_with("/System/Library") {
+                return false;
+            }
             !path.exists()
         })
     })?;
