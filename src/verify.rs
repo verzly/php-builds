@@ -75,7 +75,12 @@ pub(crate) fn verify(package: &Path, minor: &str) -> Result<()> {
         return Ok(());
     }
     let pie = work.join("pie.phar");
-    download(PIE_URL, &pie)?;
+    match std::env::var("PIE_PHAR") {
+        Ok(source) if Path::new(&source).is_file() => {
+            fs::copy(&source, &pie)?;
+        }
+        _ => download(PIE_URL, &pie)?,
+    }
     if sha256(&pie)? != PIE_SHA256 {
         return Err("PIE 1.5.5 checksum mismatch".into());
     }
