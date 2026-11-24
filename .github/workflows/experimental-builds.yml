@@ -1,0 +1,425 @@
+name: Experimental PHP builds
+
+on:
+  workflow_dispatch:
+    inputs:
+      php_minor:
+        type: choice
+        options: [all, "8.1", "8.2", "8.3", "8.4", "8.5", "8.6"]
+        default: all
+      target:
+        type: choice
+        options: [all, macos-15, macos-26]
+        default: all
+      release:
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: write
+
+env:
+  GH_REPO: ${{ github.repository }}
+
+jobs:
+  plan:
+    runs-on: ubuntu-22.04
+    outputs:
+      matrix: ${{ steps.matrix.outputs.value }}
+      containers: ${{ steps.matrix.outputs.containers }}
+    steps:
+      - id: matrix
+        env:
+          PHP_MINOR: ${{ inputs.php_minor }}
+          TARGET: ${{ inputs.target }}
+        run: |
+          {
+            echo "value<<MATRIX_EOF"
+            jq -cn --arg php "$PHP_MINOR" --arg target "$TARGET" '{
+              include: (
+                ["8.1", "8.2", "8.3", "8.4", "8.5", "8.6"] as $minors
+                | [{"os": "macos-15", "arch": "arm64"},
+                   {"os": "macos-26", "arch": "arm64"}] as $targets
+                | [ $minors[] as $m | $targets[] as $t
+                    | select($php == "all" or $php == $m)
+                    | select($target == "all" or $target == $t.os)
+                    | {php_minor: $m, os: $t.os, arch: $t.arch} ]
+              )
+            }'
+            echo "MATRIX_EOF"
+            echo "containers<<CONTAINERS_EOF"
+            jq -cn --arg php "$PHP_MINOR" '{
+              include: (
+                ["8.1", "8.2", "8.3", "8.4", "8.5", "8.6"] as $minors
+                | [
+                  {"distro": "ubuntu-22.04", "image": "ubuntu:22.04"},
+                  {"distro": "ubuntu-24.04", "image": "ubuntu:24.04"},
+                  {"distro": "debian-bookworm", "image": "debian:bookworm"},
+                  {"distro": "debian-trixie", "image": "debian:trixie"},
+                  {"distro": "fedora", "image": "fedora:latest", "openssl4": true},
+                  {"distro": "centos-stream-9", "image": "quay.io/centos/centos:stream9"},
+                  {"distro": "centos-stream-10", "image": "quay.io/centos/centos:stream10"},
+                  {"distro": "rocky-8", "image": "rockylinux:8"},
+                  {"distro": "rocky-9", "image": "rockylinux:9"},
+                  {"distro": "rocky-10", "image": "rockylinux:10"},
+                  {"distro": "alma-8", "image": "almalinux:8"},
+                  {"distro": "alma-9", "image": "almalinux:9"},
+                  {"distro": "alma-10", "image": "almalinux:10"},
+                  {"distro": "oracle-8", "image": "oraclelinux:8"},
+                  {"distro": "oracle-9", "image": "oraclelinux:9"},
+                  {"distro": "oracle-10", "image": "oraclelinux:10"},
+                  {"distro": "amazonlinux-2023", "image": "amazonlinux:2023"},
+                  {"distro": "arch", "image": "archlinux:base-devel", "openssl4": true},
+                  {"distro": "alpine", "image": "alpine:latest", "musl_new": true}
+                ] as $distros
+                | [ $minors[] as $m | $distros[] as $d
+                    | select($php == "all" or $php == $m)
+                    | select((($m == "8.1" or $m == "8.2" or $m == "8.3") and ($d.openssl4 == true)) | not)
+                    | select((($m == "8.1") and ($d.musl_new == true)) | not)
+                    | {php_minor: $m, distro: $d.distro, image: $d.image, arch: "x86_64"} ]
+              )
+            }'
+            echo "CONTAINERS_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+  prepare:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Download PIE once for every test job
+        run: |
+          curl -fsSL -o pie.phar "https://github.com/php/pie/releases/download/1.5.5/pie.phar"
+          echo "2ca0dff6868f1b53c095625674deef38ac698588e0a25e4321cd834a5b7553bc  pie.phar" | sha256sum -c -
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pie
+          path: pie.phar
+          retention-days: 14
+
+  build:
+    name: PHP ${{ matrix.php_minor }} / ${{ matrix.os }}
+    needs: plan
+    permissions:
+      contents: write
+      actions: write
+    strategy:
+      fail-fast: true
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install build dependencies
+        env:
+          PHP_BUILD_VERSION: ${{ matrix.php_minor }}
+          PHP_CONFIGURE_OPTIONS: "--with-openssl --with-curl --with-zlib --with-zip --with-bz2 --with-readline --with-gettext --with-mysqli=mysqlnd --with-pdo-mysql=mysqlnd --with-pgsql --with-pdo-pgsql --with-pdo-sqlite --with-sqlite3 --with-pdo-odbc=unixODBC --with-unixODBC --with-pdo-dblib --enable-dba --with-inifile --with-flatfile --enable-mbstring --enable-intl --enable-bcmath --with-gmp --with-sodium --with-xsl --with-tidy --with-ldap --with-snmp --enable-gd --with-external-gd --with-jpeg --with-freetype --with-webp --enable-soap --enable-pcntl --enable-sysvmsg --enable-sysvsem --enable-sysvshm --enable-shmop --enable-exif --enable-calendar --enable-ftp --enable-sockets --enable-opcache"
+        run: sh ci/install-dependencies.sh
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-${{ runner.arch }}-cargo-${{ hashFiles('Cargo.lock') }}
+      - name: Build Rust CLI
+        run: cargo build --release --locked
+      - name: Build PHP package
+        env:
+          PHP_MINOR: ${{ matrix.php_minor }}
+          PHP_BUILD_TARGET_LABEL: ${{ matrix.os }}
+        run: target/release/php-builds build --minor "$PHP_MINOR" --root "${{ runner.temp }}/php-build"
+      - name: Verify relocated package
+        env:
+          PHP_MINOR: ${{ matrix.php_minor }}
+        run: target/release/php-builds verify --package "${{ runner.temp }}/php-build/package" --minor "$PHP_MINOR"
+      - name: Publish archive to draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PHP_MINOR: ${{ matrix.php_minor }}
+        run: |
+          VERSION="$(target/release/php-builds resolve --minor "$PHP_MINOR" --print-version)"
+          tag="php-$VERSION"
+          gh release view "$tag" >/dev/null 2>&1 || \
+            gh release create "$tag" --draft --title "PHP $VERSION" --notes "Experimental system-linked PHP builds." || \
+            gh release view "$tag" >/dev/null
+          gh release upload "$tag" "${{ runner.temp }}"/php-build/dist/*.tar.gz --clobber
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: logs-php-${{ matrix.php_minor }}-${{ matrix.os }}-${{ matrix.arch }}
+          path: ${{ runner.temp }}/php-build/logs/*
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Stop the whole run on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run cancel "$GITHUB_RUN_ID"
+
+  build-container:
+    needs: plan
+    strategy:
+      fail-fast: true
+      matrix: ${{ fromJSON(needs.plan.outputs.containers) }}
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    timeout-minutes: 120
+    env:
+      # rustup refuses to run when HOME is /github/home but euid 0 resolves /root.
+      HOME: /root
+      # The runner mounts /root/.docker/config.json for another uid; point at an empty config.
+      DOCKER_CONFIG: /tmp/docker-empty
+      # EL8 toolchains link extension objects into a PIE executable by default.
+      CFLAGS: -fPIC
+      CXXFLAGS: -fPIC
+      LDFLAGS: -pie
+    permissions:
+      contents: write
+      actions: write
+    defaults:
+      run:
+        shell: sh
+    steps:
+      - name: Bootstrap git and curl
+        run: |
+          if command -v apt-get >/dev/null 2>&1; then
+            apt-get update && apt-get install -y git curl ca-certificates tar
+          elif command -v dnf >/dev/null 2>&1; then
+            dnf install -y git bash tar
+            command -v curl >/dev/null 2>&1 || dnf install -y curl-minimal
+          elif command -v microdnf >/dev/null 2>&1; then
+            microdnf install -y git bash tar tar
+            command -v curl >/dev/null 2>&1 || microdnf install -y curl-minimal
+          elif command -v yum >/dev/null 2>&1; then
+            yum install -y git bash tar
+            command -v curl >/dev/null 2>&1 || yum install -y curl-minimal
+          elif command -v apk >/dev/null 2>&1; then
+            apk add --no-cache git curl bash tar
+          elif command -v pacman >/dev/null 2>&1; then
+            pacman -Syu --noconfirm git curl tar
+          else
+            echo "Error: no supported package manager found." >&2
+            exit 1
+          fi
+          mkdir -p "$DOCKER_CONFIG"
+          curl -fsSL https://github.com/cli/cli/releases/download/v2.76.2/gh_2.76.2_linux_amd64.tar.gz \
+            | tar -xz --strip-components=2 -C /usr/local/bin gh_2.76.2_linux_amd64/bin/gh
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - uses: actions/checkout@v7
+      - name: Install build dependencies
+        env:
+          PHP_BUILD_VERSION: ${{ matrix.php_minor }}
+          PHP_CONFIGURE_OPTIONS: "--with-openssl --with-curl --with-zlib --with-zip --with-bz2 --with-readline --with-gettext --with-mysqli=mysqlnd --with-pdo-mysql=mysqlnd --with-pgsql --with-pdo-pgsql --with-pdo-sqlite --with-sqlite3 --with-pdo-odbc=unixODBC --with-unixODBC --with-pdo-dblib --enable-dba --with-inifile --with-flatfile --enable-mbstring --enable-intl --enable-bcmath --with-gmp --with-sodium --with-xsl --with-tidy --with-ldap --with-snmp --enable-gd --with-external-gd --with-jpeg --with-freetype --with-webp --enable-soap --enable-pcntl --enable-sysvmsg --enable-sysvsem --enable-sysvshm --enable-shmop --enable-exif --enable-calendar --enable-ftp --enable-sockets --enable-opcache"
+        run: sh ci/install-dependencies.sh
+      - name: Install Rust toolchain
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+      - name: Build Rust CLI
+        run: '"$HOME/.cargo/bin/cargo" build --release --locked'
+      - name: Build PHP package
+        env:
+          PHP_MINOR: ${{ matrix.php_minor }}
+          PHP_BUILD_TARGET_LABEL: ${{ matrix.distro }}
+        run: target/release/php-builds build --minor "$PHP_MINOR" --root /tmp/php-build
+      - name: Verify relocated package
+        env:
+          PHP_MINOR: ${{ matrix.php_minor }}
+        run: target/release/php-builds verify --package /tmp/php-build/package --minor "$PHP_MINOR"
+      - name: Publish archive to draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PHP_MINOR: ${{ matrix.php_minor }}
+          PHP_BUILD_TARGET_LABEL: ${{ matrix.distro }}
+        run: |
+          VERSION="$(target/release/php-builds resolve --minor "$PHP_MINOR" --print-version)"
+          tag="php-$VERSION"
+          gh release view "$tag" >/dev/null 2>&1 || \
+            gh release create "$tag" --draft --title "PHP $VERSION" --notes "Experimental system-linked PHP builds." || \
+            gh release view "$tag" >/dev/null
+          gh release upload "$tag" /tmp/php-build/dist/*.tar.gz --clobber
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: logs-php-${{ matrix.php_minor }}-${{ matrix.distro }}-${{ matrix.arch }}
+          path: /tmp/php-build/logs/*
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Stop the whole run on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run cancel "$GITHUB_RUN_ID"
+
+  test-hosted:
+    needs: [plan, build, prepare]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+      actions: write
+    strategy:
+      fail-fast: true
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install build dependencies
+        env:
+          PHP_BUILD_VERSION: ${{ matrix.php_minor }}
+          PHP_CONFIGURE_OPTIONS: "--with-openssl --with-curl --with-zlib --with-zip --with-bz2 --with-readline --with-gettext --with-mysqli=mysqlnd --with-pdo-mysql=mysqlnd --with-pgsql --with-pdo-pgsql --with-pdo-sqlite --with-sqlite3 --with-pdo-odbc=unixODBC --with-unixODBC --with-pdo-dblib --enable-dba --with-inifile --with-flatfile --enable-mbstring --enable-intl --enable-bcmath --with-gmp --with-sodium --with-xsl --with-tidy --with-ldap --with-snmp --enable-gd --with-external-gd --with-jpeg --with-freetype --with-webp --enable-soap --enable-pcntl --enable-sysvmsg --enable-sysvsem --enable-sysvshm --enable-shmop --enable-exif --enable-calendar --enable-ftp --enable-sockets --enable-opcache"
+        run: sh ci/install-dependencies.sh
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-${{ runner.arch }}-cargo-${{ hashFiles('Cargo.lock') }}
+      - name: Build Rust CLI
+        run: cargo build --release --locked
+      - name: Download and extract published archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PHP_MINOR: ${{ matrix.php_minor }}
+          PHP_BUILD_TARGET_LABEL: ${{ matrix.os }}
+        run: |
+          VERSION="$(target/release/php-builds resolve --minor "$PHP_MINOR" --print-version)"
+          mkdir -p "$RUNNER_TEMP/rel" "$RUNNER_TEMP/sdk"
+          gh release download "php-$VERSION" --pattern "php-$VERSION-${{ matrix.os }}-${{ matrix.arch }}.tar.gz" --dir "$RUNNER_TEMP/rel"
+          tar -xzf "$RUNNER_TEMP/rel/php-$VERSION-${{ matrix.os }}-${{ matrix.arch }}.tar.gz" -C "$RUNNER_TEMP/sdk"
+      - name: Run runtime self-check
+        env:
+          PHP_MINOR: ${{ matrix.php_minor }}
+        run: target/release/php-builds selfcheck --package "$RUNNER_TEMP/sdk" --minor "$PHP_MINOR"
+      - name: Download PIE
+        uses: actions/download-artifact@v8
+        with:
+          name: pie
+          path: ${{ runner.temp }}/pie
+      - name: Verify relocated package
+        env:
+          PHP_MINOR: ${{ matrix.php_minor }}
+          PIE_PHAR: ${{ runner.temp }}/pie/pie.phar
+        run: target/release/php-builds verify --package "$RUNNER_TEMP/sdk" --minor "$PHP_MINOR"
+
+      - name: Stop the whole run on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run cancel "$GITHUB_RUN_ID"
+
+  test-container:
+    needs: [plan, build-container, prepare]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    container: ${{ matrix.image }}
+    strategy:
+      fail-fast: true
+      matrix: ${{ fromJSON(needs.plan.outputs.containers) }}
+    env:
+      HOME: /root
+      # The runner mounts /root/.docker/config.json for another uid; point at an empty config.
+      DOCKER_CONFIG: /tmp/docker-empty
+    defaults:
+      run:
+        shell: sh
+    steps:
+      - name: Bootstrap git and curl
+        run: |
+          if command -v apt-get >/dev/null 2>&1; then
+            apt-get update && apt-get install -y git curl ca-certificates tar
+          elif command -v dnf >/dev/null 2>&1; then
+            dnf install -y git bash tar
+            command -v curl >/dev/null 2>&1 || dnf install -y curl-minimal
+          elif command -v microdnf >/dev/null 2>&1; then
+            microdnf install -y git bash tar tar
+            command -v curl >/dev/null 2>&1 || microdnf install -y curl-minimal
+          elif command -v yum >/dev/null 2>&1; then
+            yum install -y git bash tar
+            command -v curl >/dev/null 2>&1 || yum install -y curl-minimal
+          elif command -v apk >/dev/null 2>&1; then
+            apk add --no-cache git curl bash tar
+          elif command -v pacman >/dev/null 2>&1; then
+            pacman -Syu --noconfirm git curl tar
+          else
+            echo "Error: no supported package manager found." >&2
+            exit 1
+          fi
+          mkdir -p "$DOCKER_CONFIG"
+          curl -fsSL https://github.com/cli/cli/releases/download/v2.76.2/gh_2.76.2_linux_amd64.tar.gz \
+            | tar -xz --strip-components=2 -C /usr/local/bin gh_2.76.2_linux_amd64/bin/gh
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - uses: actions/checkout@v7
+      - name: Install build dependencies
+        env:
+          PHP_BUILD_VERSION: ${{ matrix.php_minor }}
+          PHP_CONFIGURE_OPTIONS: "--with-openssl --with-curl --with-zlib --with-zip --with-bz2 --with-readline --with-gettext --with-mysqli=mysqlnd --with-pdo-mysql=mysqlnd --with-pgsql --with-pdo-pgsql --with-pdo-sqlite --with-sqlite3 --with-pdo-odbc=unixODBC --with-unixODBC --with-pdo-dblib --enable-dba --with-inifile --with-flatfile --enable-mbstring --enable-intl --enable-bcmath --with-gmp --with-sodium --with-xsl --with-tidy --with-ldap --with-snmp --enable-gd --with-external-gd --with-jpeg --with-freetype --with-webp --enable-soap --enable-pcntl --enable-sysvmsg --enable-sysvsem --enable-sysvshm --enable-shmop --enable-exif --enable-calendar --enable-ftp --enable-sockets --enable-opcache"
+        run: sh ci/install-dependencies.sh
+      - name: Install Rust toolchain
+        run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+      - name: Download and extract published archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PHP_MINOR: ${{ matrix.php_minor }}
+          PHP_BUILD_TARGET_LABEL: ${{ matrix.distro }}
+        run: |
+          "$HOME/.cargo/bin/cargo" build --release --locked
+          VERSION="$(target/release/php-builds resolve --minor "$PHP_MINOR" --print-version)"
+          mkdir -p "$RUNNER_TEMP/rel" "$RUNNER_TEMP/sdk"
+          gh release download "php-$VERSION" --pattern "php-$VERSION-${{ matrix.distro }}-${{ matrix.arch }}.tar.gz" --dir "$RUNNER_TEMP/rel"
+          tar -xzf "$RUNNER_TEMP/rel/php-$VERSION-${{ matrix.distro }}-${{ matrix.arch }}.tar.gz" -C "$RUNNER_TEMP/sdk"
+      - name: Run runtime self-check
+        env:
+          PHP_MINOR: ${{ matrix.php_minor }}
+        run: target/release/php-builds selfcheck --package "$RUNNER_TEMP/sdk" --minor "$PHP_MINOR"
+      - name: Download PIE
+        uses: actions/download-artifact@v8
+        with:
+          name: pie
+          path: ${{ runner.temp }}/pie
+      - name: Verify relocated package
+        env:
+          PHP_MINOR: ${{ matrix.php_minor }}
+          PIE_PHAR: ${{ runner.temp }}/pie/pie.phar
+        run: target/release/php-builds verify --package "$RUNNER_TEMP/sdk" --minor "$PHP_MINOR"
+
+      - name: Stop the whole run on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run cancel "$GITHUB_RUN_ID"
+
+  publish:
+    needs: [plan, build, build-container, test-hosted, test-container]
+    if: ${{ inputs.release == true && inputs.php_minor != 'all' && needs.build.result == 'success' && needs.build-container.result == 'success' && needs.test-hosted.result == 'success' && needs.test-container.result == 'success' }}
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-${{ runner.arch }}-cargo-${{ hashFiles('Cargo.lock') }}
+      - name: Build Rust CLI
+        run: cargo build --release --locked
+      - name: Publish prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PHP_MINOR: ${{ inputs.php_minor }}
+        run: |
+          VERSION="$(target/release/php-builds resolve --minor "$PHP_MINOR" --print-version)"
+          tag="php-$VERSION"
+          mkdir -p "$RUNNER_TEMP/release"
+          gh release download "$tag" --dir "$RUNNER_TEMP/release"
+          (cd "$RUNNER_TEMP/release" && sha256sum * > SHA256SUMS)
+          gh release upload "$tag" "$RUNNER_TEMP/release/SHA256SUMS" --clobber
+          gh release edit "$tag" --draft=false --prerelease
+          gh release view "$tag" --json isDraft,isPrerelease | jq -e '.isDraft == false and .isPrerelease == true'
